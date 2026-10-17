@@ -1,6 +1,6 @@
 /**
  * Daily Production Logger
- * Cloud-Enabled with Supabase Live Real-Time Database Sync
+ * Powered by Node.js & MongoDB Backend
  * - Multi-device synchronization (Phones, Tablets, Admin PC)
  * - Custom Admin Account Creation
  * - Empty starter records
@@ -10,20 +10,8 @@
 (function () {
   'use strict';
 
-  // Supabase Cloud Configuration
-  const SUPABASE_URL = 'https://xyrplvhzlfbsstpknegl.supabase.co';
-  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh5cnBsdmh6bGZic3N0cGtuZWdsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIxNTA3NjMsImV4cCI6MjEwNzcyNjc2M30.4KOkyDp8y2S5rVvoE3cCNckcfR01WdWvnmXwuSkgiJs';
-
-  // Initialize Supabase Client
-  let supabase = null;
-  try {
-    if (window.supabase && typeof window.supabase.createClient === 'function') {
-      supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-      console.log('Supabase cloud client initialized successfully');
-    }
-  } catch (err) {
-    console.warn('Could not initialize Supabase client:', err);
-  }
+  // Backend API URL
+  const API_BASE = '/api';
 
   // Local Storage Keys
   const STORAGE_KEY = 'factory_prod_logs_v3';
@@ -256,7 +244,7 @@
     return `${hours}:${minutes}:${seconds}`;
   }
 
-  // Load Data: Cloud first, fallback to LocalStorage
+  // Load Data: Backend API first, fallback to LocalStorage
   async function loadData() {
     try {
       const savedLang = localStorage.getItem(LANG_KEY);
@@ -274,70 +262,47 @@
       const savedRecords = localStorage.getItem(STORAGE_KEY);
       records = savedRecords ? JSON.parse(savedRecords) : [];
 
-      // Fetch from Supabase Cloud if available
-      if (supabase) {
-        await fetchCloudRecords();
-        setupRealtimeSubscription();
-        await fetchAdminCredsFromCloud();
-      }
+      await Promise.all([fetchServerRecords(), fetchAdminStatus()]);
+
+      // Periodic auto-sync every 5 seconds for multi-device sync
+      setInterval(fetchServerRecords, 5000);
     } catch (e) {
       console.error('Error during loadData:', e);
     }
   }
 
-  async function fetchCloudRecords() {
-    if (!supabase) return;
+  async function fetchServerRecords() {
     try {
-      const { data, error } = await supabase
-        .from('production_logs')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (!error && Array.isArray(data)) {
-        records = data;
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
-        renderWorkerTable();
-        if (isAdminLoggedIn) renderAdminDashboard();
+      const res = await fetch(`${API_BASE}/logs`);
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          records = data;
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+          renderWorkerTable();
+          if (isAdminLoggedIn) renderAdminDashboard();
+        }
       }
     } catch (err) {
-      console.warn('Could not fetch from Supabase:', err);
+      console.warn('Backend unavailable, using cached records:', err);
     }
   }
 
-  // Supabase Real-Time Listener (Instant update across phones & admin)
-  function setupRealtimeSubscription() {
-    if (!supabase) return;
+  async function fetchAdminStatus() {
     try {
-      supabase
-        .channel('public:production_logs')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'production_logs' }, () => {
-          fetchCloudRecords();
-        })
-        .subscribe((status) => {
-          console.log('Supabase Realtime subscription status:', status);
-        });
-    } catch (err) {
-      console.warn('Realtime subscription error:', err);
-    }
-  }
-
-  async function fetchAdminCredsFromCloud() {
-    if (!supabase) return;
-    try {
-      const { data, error } = await supabase
-        .from('admin_config')
-        .select('*')
-        .limit(1);
-
-      if (!error && data && data.length > 0) {
-        adminCreds = {
-          username: data[0].username,
-          password: data[0].password
-        };
-        localStorage.setItem(ADMIN_CREDS_KEY, JSON.stringify(adminCreds));
+      const res = await fetch(`${API_BASE}/admin/config`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.configured) {
+          adminCreds = { username: data.username };
+          localStorage.setItem(ADMIN_CREDS_KEY, JSON.stringify(adminCreds));
+        } else {
+          adminCreds = null;
+          localStorage.removeItem(ADMIN_CREDS_KEY);
+        }
       }
-    } catch (e) {
-      // Ignore if table not yet created
+    } catch (err) {
+      console.warn('Could not fetch admin config from backend:', err);
     }
   }
 
@@ -350,17 +315,20 @@
   }
 
   async function saveAdminCreds(username, password) {
-    adminCreds = { username, password };
+    adminCreds = { username };
     localStorage.setItem(ADMIN_CREDS_KEY, JSON.stringify(adminCreds));
 
-    if (supabase) {
-      try {
-        await supabase
-          .from('admin_config')
-          .upsert([{ id: 'default_admin', username, password, updated_at: new Date().toISOString() }]);
-      } catch (err) {
-        console.warn('Could not sync admin creds to cloud:', err);
+    try {
+      const res = await fetch(`${API_BASE}/admin/config`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+      if (!res.ok) {
+        throw new Error('Failed to save admin credentials to backend');
       }
+    } catch (err) {
+      console.warn('Could not sync admin creds to backend:', err);
     }
   }
 
@@ -649,16 +617,21 @@
     showToast(t.toastLogged(quantity, task, workerName));
     renderWorkerTable();
 
-    // Push to Supabase Cloud
-    if (supabase) {
-      try {
-        const { error } = await supabase.from('production_logs').insert([newRecord]);
-        if (error) {
-          console.warn('Supabase insert warning:', error.message);
-        }
-      } catch (err) {
-        console.warn('Network error pushing to Supabase:', err);
+    // Push to MongoDB Backend
+    try {
+      const res = await fetch(`${API_BASE}/logs`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newRecord)
+      });
+      if (res.ok) {
+        const saved = await res.json();
+        newRecord.id = saved.id || newRecord.id;
+        saveRecordsLocal();
+        renderWorkerTable();
       }
+    } catch (err) {
+      console.warn('Network error pushing to backend:', err);
     }
   }
 
@@ -731,12 +704,33 @@
     }
   }
 
-  function handleAdminLogin(e) {
+  async function handleAdminLogin(e) {
     e.preventDefault();
     const t = I18N[currentLang];
     const user = document.getElementById('admin-user-input').value.trim();
     const pass = document.getElementById('admin-pass-input').value;
     const errorBox = document.getElementById('admin-login-error');
+
+    try {
+      const res = await fetch(`${API_BASE}/admin/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: user, password: pass })
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        isAdminLoggedIn = true;
+        sessionStorage.setItem(ADMIN_SESSION_KEY, 'true');
+        adminCreds = { username: data.username };
+        errorBox.classList.add('hidden');
+        showToast(t.toastAdminLoggedIn);
+        showView('admin-dashboard');
+        return;
+      }
+    } catch (err) {
+      console.warn('Backend login check failed, checking offline:', err);
+    }
 
     if (adminCreds && user === adminCreds.username && pass === adminCreds.password) {
       isAdminLoggedIn = true;
@@ -859,13 +853,11 @@
       renderAdminDashboard();
       renderWorkerTable();
 
-      // Delete from cloud
-      if (supabase) {
-        try {
-          await supabase.from('production_logs').delete().eq('id', id);
-        } catch (err) {
-          console.warn('Could not delete from cloud:', err);
-        }
+      // Delete from backend
+      try {
+        await fetch(`${API_BASE}/logs/${id}`, { method: 'DELETE' });
+      } catch (err) {
+        console.warn('Could not delete from backend:', err);
       }
     }
   }
