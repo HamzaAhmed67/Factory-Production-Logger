@@ -13,14 +13,6 @@
 
 ---
 
-## 🚀 كيفية الفتح والتشغيل
-
-التطبيق متاح ويعمل محلياً الآن:
-👉 **[http://localhost:8085](http://localhost:8085)**
-
-أو فتح ملف [`index.html`](file:///C:/Users/Hamza/.gemini/antigravity-ide/scratch/factory-production-logger/index.html) مباشرة في المتصفح.
-
----
 
 ## 🌐 التبديل بين اللغتين (Arabic / English)
 - لغة العرض الافتراضية هي **العربية** مع اتجاه قراءة صحيح (`RTL`) وخط **Cairo** العربي.
