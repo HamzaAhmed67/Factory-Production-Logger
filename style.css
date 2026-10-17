@@ -1,0 +1,143 @@
+/* Clean, Modern Bilingual Stylesheet with Light & Dark Modes */
+:root {
+  --bg-primary: #d9bda5;
+  --brand-navy: #26276b;
+  --brand-navy-hover: #1b1c52;
+  --brand-gold: #c89b53;
+  --card-bg: rgba(255, 255, 255, 0.94);
+  --card-border: rgba(255, 255, 255, 0.7);
+  --header-bg: rgba(255, 255, 255, 0.92);
+  --header-border: rgba(160, 130, 105, 0.25);
+  --text-primary: #1e293b;
+  --text-muted: #64748b;
+  --input-bg: #ffffff;
+  --input-border: #cbd5e1;
+  --table-header-bg: rgba(241, 245, 249, 0.9);
+  --table-row-bg: rgba(255, 255, 255, 0.75);
+  --table-border: #e2e8f0;
+  --watermark-opacity: 0.16;
+}
+
+/* Dark Mode Theme Variables */
+html.dark {
+  --bg-primary: #141118;
+  --brand-navy: #3b3e94;
+  --brand-navy-hover: #4c50b5;
+  --brand-gold: #e2ba7d;
+  --card-bg: rgba(28, 24, 34, 0.92);
+  --card-border: rgba(217, 189, 165, 0.18);
+  --header-bg: rgba(22, 18, 28, 0.94);
+  --header-border: rgba(217, 189, 165, 0.15);
+  --text-primary: #f8fafc;
+  --text-muted: #94a3b8;
+  --input-bg: #1c1824;
+  --input-border: #3d3548;
+  --table-header-bg: rgba(38, 32, 48, 0.95);
+  --table-row-bg: rgba(28, 24, 34, 0.7);
+  --table-border: #2e283b;
+  --watermark-opacity: 0.12;
+}
+
+body {
+  font-family: 'Inter', 'Cairo', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+  position: relative;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Background Watermark Logo */
+.bg-watermark {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.bg-watermark img {
+  width: min(88vw, 650px);
+  max-height: 85vh;
+  object-fit: contain;
+  opacity: var(--watermark-opacity);
+  user-select: none;
+  -webkit-user-drag: none;
+  transition: opacity 0.3s ease;
+}
+
+/* Glassmorphic Cards */
+.glass-card {
+  background: var(--card-bg);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--card-border);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  transition: background 0.3s ease, border-color 0.3s ease;
+}
+
+.glass-header {
+  background: var(--header-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--header-border);
+  transition: background 0.3s ease, border-color 0.3s ease;
+}
+
+/* Custom Input Styling */
+input[type="text"],
+input[type="password"],
+input[type="number"],
+input[type="date"] {
+  background-color: var(--input-bg);
+  border-color: var(--input-border);
+  color: var(--text-primary);
+  transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+html.dark input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+}
+
+/* Arabic Specific Typography */
+[dir="rtl"] body,
+[dir="rtl"] button,
+[dir="rtl"] input,
+[dir="rtl"] select,
+[dir="rtl"] table {
+  font-family: 'Cairo', 'Inter', sans-serif !important;
+}
+
+/* Remove default number input arrows */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+/* Smooth transitions */
+button, input {
+  transition: all 0.15s ease-in-out;
+}
+
+/* Toast animation */
+@keyframes slideDown {
+  from {
+    transform: translateY(-10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-toast {
+  animation: slideDown 0.2s ease-out forwards;
+}

@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr" class="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VG Production Logger - مسجل الإنتاج</title>
+  
+  <!-- Favicon using Logo -->
+  <link rel="icon" type="image/png" href="logo-transparent.png">
+
+  <!-- Modern Fonts: Inter & Cairo (for Arabic) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS CDN with Dark Mode Class Support -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Supabase JS Client CDN for Live Real-Time Factory Sync -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            vgNavy: '#26276b',
+            vgNavyHover: '#1b1c52',
+            vgGold: '#c89b53',
+            vgGoldLight: '#e2ba7d',
+            vgBg: '#d9bda5',
+            vgDarkBg: '#141118',
+            vgDarkCard: '#1c1824'
+          },
+          fontFamily: {
+            sans: ['Inter', 'Cairo', 'sans-serif'],
+            arabic: ['Cairo', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="text-slate-800 dark:text-slate-100 min-h-screen flex flex-col font-sans transition-all relative overflow-x-hidden">
+
+  <!-- Transparent Watermark Logo Background -->
+  <div class="bg-watermark" aria-hidden="true">
+    <img src="logo-transparent.png" alt="VG Logo Background Watermark">
+  </div>
+
+  <!-- Header -->
+  <header class="glass-header px-4 py-2.5 sticky top-0 z-30 shadow-sm relative">
+    <div class="max-w-4xl mx-auto flex items-center justify-between">
+      
+      <!-- Brand & Clock -->
+      <div class="flex items-center space-x-3 rtl:space-x-reverse cursor-pointer" id="header-logo-btn">
+        <img src="logo-transparent.png" alt="VG Logo" class="h-10 w-auto object-contain drop-shadow-sm">
+        <div>
+          <span class="font-bold text-[#26276b] dark:text-[#e2ba7d] text-base" id="header-title-text">Production Logger</span>
+          <span class="text-xs text-slate-600 dark:text-slate-400 block -mt-0.5" id="header-live-time">Loading clock...</span>
+        </div>
+      </div>
+
+      <!-- Actions: Dark Mode Toggle, Language Toggle, Back to Role Select -->
+      <div class="flex items-center space-x-2 rtl:space-x-reverse">
+        
+        <!-- Theme Dark / Light Mode Toggle -->
+        <button id="btn-toggle-theme" class="px-2.5 py-1.5 text-xs font-bold rounded-lg border border-slate-300 dark:border-amber-900/30 hover:bg-slate-100/80 dark:hover:bg-slate-800/80 bg-white/90 dark:bg-slate-900/90 text-slate-800 dark:text-amber-200 flex items-center space-x-1.5 rtl:space-x-reverse transition shadow-sm" title="Toggle Dark/Light Mode">
+          <span id="theme-btn-icon">🌙</span>
+          <span id="theme-btn-label">الداكن</span>
+        </button>
+
+        <!-- Language Switcher Button -->
+        <button id="btn-toggle-lang" class="px-3 py-1.5 text-xs font-bold rounded-lg border border-slate-300 dark:border-amber-900/30 hover:bg-slate-100/80 dark:hover:bg-slate-800/80 bg-white/90 dark:bg-slate-900/90 text-[#26276b] dark:text-[#e2ba7d] flex items-center space-x-1.5 rtl:space-x-reverse transition shadow-sm">
+          <span class="text-sm">🌐</span>
+          <span id="lang-btn-label">العربية</span>
+        </button>
+
+        <!-- Role Switcher Button -->
+        <button id="btn-back-home" class="hidden px-3 py-1.5 text-xs font-semibold rounded-lg bg-white/90 dark:bg-slate-800 hover:bg-white text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 transition shadow-sm">
+          <span id="btn-back-home-text">← Switch Role</span>
+        </button>
+
+      </div>
+    </div>
+  </header>
+
+  <!-- Notification Toast -->
+  <div id="toast-message" class="hidden fixed top-16 right-4 rtl:right-auto rtl:left-4 z-50 px-4 py-3 rounded-xl shadow-2xl text-sm font-semibold transition-all duration-300"></div>
+
+  <!-- Main Container -->
+  <main class="flex-1 max-w-4xl w-full mx-auto p-4 sm:p-6 flex flex-col justify-center relative z-10">
+
+    <!-- ========================================== -->
+    <!-- 1. LANDING PAGE: SIMPLE ROLE SELECTION     -->
+    <!-- ========================================== -->
+    <section id="view-landing" class="text-center py-8 sm:py-16 space-y-8">
+      <div class="space-y-2">
+        <h1 class="text-3xl sm:text-4xl font-extrabold text-[#26276b] dark:text-[#e2ba7d] tracking-tight" id="landing-main-title">
+          Daily Production Logger
+        </h1>
+        <p class="text-slate-700 dark:text-slate-300 text-base max-w-md mx-auto font-medium" id="landing-subtitle">
+          Fast and straightforward shop-floor logging. Select an option to proceed.
+        </p>
+      </div>
+
+      <!-- Two Big, Clear Buttons -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 max-w-lg mx-auto pt-2">
+        
+        <!-- Worker Portal Card -->
+        <button id="btn-goto-worker" class="p-6 rounded-2xl glass-card border-2 border-amber-900/10 dark:border-amber-500/20 hover:border-[#26276b]/40 dark:hover:border-[#e2ba7d]/50 shadow-md hover:shadow-2xl transition text-left rtl:text-right flex flex-col justify-between group">
+          <div>
+            <div class="w-12 h-12 rounded-xl bg-amber-100/90 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 flex items-center justify-center font-bold text-2xl mb-4 group-hover:scale-105 transition shadow-sm">
+              👷
+            </div>
+            <h2 class="text-xl font-bold text-[#26276b] dark:text-[#e2ba7d] transition" id="card-worker-title">Worker Portal</h2>
+            <p class="text-sm text-slate-600 dark:text-slate-400 mt-1 font-normal leading-relaxed" id="card-worker-desc">No password required. Type your name, product, quantity (with kg/g), and log.</p>
+          </div>
+          <div class="mt-6 flex items-center text-sm font-bold text-[#26276b] dark:text-amber-300" id="card-worker-action">
+            <span>Open Worker Portal →</span>
+          </div>
+        </button>
+
+        <!-- Admin Portal Card -->
+        <button id="btn-goto-admin" class="p-6 rounded-2xl glass-card border-2 border-amber-900/10 dark:border-amber-500/20 hover:border-[#26276b]/40 dark:hover:border-[#e2ba7d]/50 shadow-md hover:shadow-2xl transition text-left rtl:text-right flex flex-col justify-between group">
+          <div>
+            <div class="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center justify-center font-bold text-2xl mb-4 group-hover:scale-105 transition shadow-sm">
+              🛡️
+            </div>
+            <h2 class="text-xl font-bold text-slate-900 dark:text-slate-100" id="card-admin-title">Admin Portal</h2>
+            <p class="text-sm text-slate-600 dark:text-slate-400 mt-1 font-normal leading-relaxed" id="card-admin-desc">Manage, filter, search, and export all recorded logs.</p>
+          </div>
+          <div class="mt-6 flex items-center text-sm font-bold text-slate-800 dark:text-slate-300" id="card-admin-action">
+            <span>Admin Sign In →</span>
+          </div>
+        </button>
+
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- 2. WORKER PORTAL (Simple, Direct Form)     -->
+    <!-- ========================================== -->
+    <section id="view-worker" class="hidden space-y-6">
+      
+      <!-- Top Title -->
+      <div class="flex items-center justify-between pb-2 border-b border-amber-900/15 dark:border-slate-800">
+        <div>
+          <h2 class="text-2xl font-bold text-[#26276b] dark:text-[#e2ba7d]" id="worker-header-title">Worker Production Log</h2>
+          <p class="text-sm text-slate-700 dark:text-slate-400 font-medium" id="worker-header-desc">Fill in the fields below and submit your output.</p>
+        </div>
+        <button id="worker-btn-switch" class="text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white bg-white/90 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 px-3 py-1.5 rounded-lg shadow-sm">
+          <span id="worker-switch-role-text">Switch Role</span>
+        </button>
+      </div>
+
+      <!-- Simple Input Form -->
+      <div class="glass-card rounded-2xl p-6 sm:p-8 shadow-xl">
+        <form id="worker-form" class="space-y-5">
+          
+          <!-- 1. Name Input -->
+          <div class="space-y-1.5">
+            <label for="worker-name-input" class="block text-sm font-bold text-slate-800 dark:text-slate-200" id="lbl-worker-name">
+              Your Name <span class="text-rose-500">*</span>
+            </label>
+            <input 
+              type="text" 
+              id="worker-name-input" 
+              placeholder="Type your name" 
+              required
+              class="w-full px-4 py-3 rounded-xl border outline-none text-base font-medium shadow-sm focus:ring-2 focus:ring-[#26276b] dark:focus:ring-amber-400"
+            >
+          </div>
+
+          <!-- 2. Task / Product Name -->
+          <div class="space-y-1.5">
+            <div class="flex items-center justify-between">
+              <label for="worker-task-input" class="block text-sm font-bold text-slate-800 dark:text-slate-200" id="lbl-task-name">
+                Task or Product Produced <span class="text-rose-500">*</span>
+              </label>
+              <!-- Quick 1-Tap Buttons for Factory Stages -->
+              <div class="flex items-center space-x-1.5 rtl:space-x-reverse" id="quick-task-chips">
+                <button type="button" class="quick-task-btn px-2.5 py-0.5 rounded-lg text-xs font-bold bg-amber-100/90 dark:bg-amber-950/60 text-[#26276b] dark:text-amber-300 border border-amber-900/20 hover:bg-amber-200 transition shadow-sm">عجن</button>
+                <button type="button" class="quick-task-btn px-2.5 py-0.5 rounded-lg text-xs font-bold bg-amber-100/90 dark:bg-amber-950/60 text-[#26276b] dark:text-amber-300 border border-amber-900/20 hover:bg-amber-200 transition shadow-sm">تقفيل</button>
+                <button type="button" class="quick-task-btn px-2.5 py-0.5 rounded-lg text-xs font-bold bg-amber-100/90 dark:bg-amber-950/60 text-[#26276b] dark:text-amber-300 border border-amber-900/20 hover:bg-amber-200 transition shadow-sm">تركيز</button>
+              </div>
+            </div>
+            <input 
+              type="text" 
+              id="worker-task-input" 
+              placeholder="ماذا أنتجت؟ (مثال: عجن، تقفيل، تركيز)" 
+              required
+              list="common-stages-list"
+              class="w-full px-4 py-3 rounded-xl border outline-none text-base font-medium shadow-sm focus:ring-2 focus:ring-[#26276b] dark:focus:ring-amber-400"
+            >
+            <datalist id="common-stages-list">
+              <option value="عجن"></option>
+              <option value="تقفيل"></option>
+              <option value="تركيز"></option>
+            </datalist>
+          </div>
+
+          <!-- 3. Quantity Produced (Allows kg, g, numbers) -->
+          <div class="space-y-1.5">
+            <div class="flex items-center justify-between">
+              <label for="worker-qty-input" class="block text-sm font-bold text-slate-800 dark:text-slate-200" id="lbl-qty-name">
+                Quantity Produced <span class="text-rose-500">*</span>
+              </label>
+              <span class="text-xs text-slate-600 dark:text-slate-400" id="lbl-qty-tip">You can write units like <strong>25 kg</strong> or <strong>500 g</strong></span>
+            </div>
+            <input 
+              type="text" 
+              id="worker-qty-input" 
+              placeholder="e.g. 50 kg, 750 g, or 100" 
+              required
+              class="w-full px-4 py-3 rounded-xl border outline-none text-base font-semibold shadow-sm focus:ring-2 focus:ring-[#26276b] dark:focus:ring-amber-400"
+            >
+          </div>
+
+          <!-- Exact Time Display (Automatic) -->
+          <div class="bg-amber-50/70 dark:bg-slate-800/80 border border-amber-900/15 dark:border-slate-700 rounded-xl p-3 flex items-center justify-between text-xs text-slate-700 dark:text-slate-300">
+            <span id="lbl-clock-title">🕒 Exact Clock Time:</span>
+            <span class="font-bold text-[#26276b] dark:text-[#e2ba7d]" id="worker-clock-badge">Auto-captured on submit</span>
+          </div>
+
+          <!-- Submit Button -->
+          <button 
+            type="submit" 
+            id="worker-submit-btn" 
+            class="w-full py-4 rounded-xl font-bold text-base bg-[#26276b] hover:bg-[#1b1c52] dark:bg-gradient-to-r dark:from-amber-600 dark:to-amber-500 dark:hover:from-amber-500 dark:hover:to-amber-400 dark:text-slate-950 text-white shadow-xl transition flex items-center justify-center space-x-2 active:scale-[0.99]"
+          >
+            <span id="btn-submit-text">✓ SUBMIT PRODUCTION RECORD</span>
+          </button>
+        </form>
+      </div>
+
+      <!-- Worker View: Recent Submissions Table -->
+      <div class="glass-card rounded-2xl p-6 shadow-xl space-y-4">
+        <div class="flex items-center justify-between">
+          <h3 class="text-lg font-bold text-[#26276b] dark:text-[#e2ba7d]" id="worker-recent-title">Recent Production Logs</h3>
+          <span class="text-xs text-slate-600 dark:text-slate-400" id="worker-table-count">0 records</span>
+        </div>
+
+        <div class="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
+          <table class="w-full text-left rtl:text-right text-sm">
+            <thead class="bg-slate-100/90 dark:bg-slate-800 text-xs uppercase font-semibold text-slate-700 dark:text-slate-300 border-b border-slate-200 dark:border-slate-700">
+              <tr>
+                <th class="py-3 px-3" id="th-w-time">Time</th>
+                <th class="py-3 px-3" id="th-w-worker">Worker Name</th>
+                <th class="py-3 px-3" id="th-w-task">Product / Task</th>
+                <th class="py-3 px-3 text-right rtl:text-left" id="th-w-qty">Quantity</th>
+                <th class="py-3 px-3 text-center" id="th-w-status">Status</th>
+              </tr>
+            </thead>
+            <tbody id="worker-table-body" class="divide-y divide-slate-100 dark:divide-slate-800 bg-white/70 dark:bg-transparent">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ========================================== -->
+    <!-- 3. ADMIN PORTAL (Create / Login)           -->
+    <!-- ========================================== -->
+    <section id="view-admin-auth" class="hidden max-w-md mx-auto w-full">
+      <div class="glass-card rounded-2xl p-8 shadow-2xl space-y-5">
+        
+        <!-- CARD HEADER -->
+        <div class="text-center space-y-1">
+          <img src="logo-transparent.png" alt="VG Logo" class="h-12 w-auto mx-auto object-contain mb-2 drop-shadow-sm">
+          <h2 class="text-2xl font-bold text-[#26276b] dark:text-[#e2ba7d]" id="admin-auth-title">Admin Access</h2>
+          <p class="text-xs text-slate-600 dark:text-slate-400" id="admin-auth-subtitle">Please authenticate to continue.</p>
+        </div>
+
+        <!-- FORM A: LOGIN -->
+        <form id="admin-login-form" class="space-y-4">
+          <div class="space-y-1">
+            <label for="admin-user-input" class="block text-xs font-bold text-slate-700 dark:text-slate-300" id="lbl-admin-user">Username</label>
+            <input type="text" id="admin-user-input" placeholder="Enter username" required class="w-full px-3.5 py-2.5 rounded-lg border text-sm focus:ring-2 focus:ring-[#26276b] dark:focus:ring-amber-400 outline-none">
+          </div>
+
+          <div class="space-y-1">
+            <label for="admin-pass-input" class="block text-xs font-bold text-slate-700 dark:text-slate-300" id="lbl-admin-pass">Password</label>
+            <input type="password" id="admin-pass-input" placeholder="Enter password" required class="w-full px-3.5 py-2.5 rounded-lg border text-sm focus:ring-2 focus:ring-[#26276b] dark:focus:ring-amber-400 outline-none">
+          </div>
+
+          <div id="admin-login-error" class="hidden text-xs text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 p-2.5 rounded-lg">
+            Incorrect username or password.
+          </div>
+
+          <button type="submit" class="w-full py-3 rounded-xl font-bold text-sm bg-[#26276b] hover:bg-[#1b1c52] dark:bg-amber-600 dark:hover:bg-amber-500 dark:text-slate-950 text-white shadow-md transition" id="btn-admin-signin">
+            Sign In to Dashboard
+          </button>
+
+          <div class="pt-2 text-center">
+            <button type="button" id="btn-show-reset-admin" class="text-xs text-slate-600 dark:text-slate-400 hover:text-[#26276b] dark:hover:text-amber-300 underline">
+              Create New / Change Admin Credentials
+            </button>
+          </div>
+        </form>
+
+        <!-- FORM B: CREATE / SETUP ADMIN -->
+        <form id="admin-setup-form" class="hidden space-y-4">
+          <div class="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 rounded-xl text-xs text-amber-900 dark:text-amber-200 font-medium" id="admin-setup-tip">
+            Set your desired admin username and password below.
+          </div>
+
+          <div class="space-y-1">
+            <label for="setup-user-input" class="block text-xs font-bold text-slate-700 dark:text-slate-300" id="lbl-setup-user">Choose Username</label>
+            <input type="text" id="setup-user-input" placeholder="e.g. manager" required class="w-full px-3.5 py-2.5 rounded-lg border text-sm focus:ring-2 focus:ring-[#26276b] dark:focus:ring-amber-400 outline-none">
+          </div>
+
+          <div class="space-y-1">
+            <label for="setup-pass-input" class="block text-xs font-bold text-slate-700 dark:text-slate-300" id="lbl-setup-pass">Choose Password</label>
+            <input type="password" id="setup-pass-input" placeholder="Enter password" required class="w-full px-3.5 py-2.5 rounded-lg border text-sm focus:ring-2 focus:ring-[#26276b] dark:focus:ring-amber-400 outline-none">
+          </div>
+
+          <div class="space-y-1">
+            <label for="setup-pass-confirm" class="block text-xs font-bold text-slate-700 dark:text-slate-300" id="lbl-setup-confirm">Confirm Password</label>
+            <input type="password" id="setup-pass-confirm" placeholder="Confirm password" required class="w-full px-3.5 py-2.5 rounded-lg border text-sm focus:ring-2 focus:ring-[#26276b] dark:focus:ring-amber-400 outline-none">
+          </div>
+
+          <div id="admin-setup-error" class="hidden text-xs text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 p-2.5 rounded-lg">
+            Passwords do not match.
+          </div>
+
+          <button type="submit" class="w-full py-3 rounded-xl font-bold text-sm bg-[#26276b] hover:bg-[#1b1c52] dark:bg-amber-600 dark:hover:bg-amber-500 dark:text-slate-950 text-white shadow-md transition" id="btn-setup-save">
+            Save & Open Admin Dashboard
+          </button>
+
+          <div class="pt-1 text-center" id="setup-cancel-container">
+            <button type="button" id="btn-cancel-setup" class="text-xs text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white underline">
+              Cancel
+            </button>
+          </div>
+        </form>
+
+        <div class="text-center pt-2 border-t border-slate-200/80 dark:border-slate-800">
+          <button type="button" id="btn-cancel-admin" class="text-xs text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white font-medium">
+            ← Back to Role Select
+          </button>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- 4. ADMIN DASHBOARD VIEW                    -->
+    <!-- ========================================== -->
+    <section id="view-admin-dashboard" class="hidden space-y-6">
+      
+      <!-- Top Bar -->
+      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-amber-900/15 dark:border-slate-800">
+        <div>
+          <h2 class="text-2xl font-bold text-[#26276b] dark:text-[#e2ba7d]" id="admin-dash-title">Admin Dashboard</h2>
+          <p class="text-xs text-slate-700 dark:text-slate-400 font-medium" id="admin-welcome-label">Manage and review all production records.</p>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2">
+          <button id="admin-change-creds-btn" class="px-3 py-2 text-xs font-semibold rounded-lg bg-white/90 dark:bg-slate-800 hover:bg-white text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 transition shadow-sm">
+            Change Credentials
+          </button>
+          <button id="admin-export-excel" class="px-3.5 py-2 text-xs font-bold rounded-lg bg-[#26276b] hover:bg-[#1b1c52] text-white shadow-md transition flex items-center space-x-1 rtl:space-x-reverse" title="تحميل شيت إكسل منسق بالألوان والتنسيقات">
+            <span id="btn-export-excel-text">📊 شيت إكسل منسق (Excel)</span>
+          </button>
+          <button id="admin-export-csv" class="px-3 py-2 text-xs font-semibold rounded-lg bg-white/90 dark:bg-slate-800 hover:bg-white text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 transition shadow-sm" title="ملف CSV عادي">
+            <span id="btn-export-csv-text">📄 ملف CSV</span>
+          </button>
+          <button id="admin-print-report" class="px-3 py-2 text-xs font-semibold rounded-lg bg-white/90 dark:bg-slate-800 hover:bg-white text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 transition shadow-sm" title="طباعة أو تصدير PDF">
+            <span id="btn-print-text">🖨️ تقرير PDF</span>
+          </button>
+          <button id="admin-logout-btn" class="px-3.5 py-2 text-xs font-bold rounded-lg bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 transition">
+            Sign Out
+          </button>
+        </div>
+      </div>
+
+      <!-- Quick Summary Badges -->
+      <div class="grid grid-cols-2 gap-3">
+        <div class="glass-card p-4 rounded-xl shadow-md">
+          <span class="text-xs text-slate-600 dark:text-slate-400 font-semibold" id="stat-lbl-logs">Total Submissions Logged</span>
+          <p id="admin-stat-logs" class="text-2xl font-bold text-[#26276b] dark:text-[#e2ba7d] mt-1">0</p>
+        </div>
+        <div class="glass-card p-4 rounded-xl shadow-md">
+          <span class="text-xs text-slate-600 dark:text-slate-400 font-semibold" id="stat-lbl-workers">Active Workers</span>
+          <p id="admin-stat-workers" class="text-2xl font-bold text-[#26276b] dark:text-[#e2ba7d] mt-1">0</p>
+        </div>
+      </div>
+
+      <!-- Simple Filters -->
+      <div class="glass-card p-4 rounded-xl shadow-md space-y-3">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold text-[#26276b] dark:text-[#e2ba7d] uppercase tracking-wider" id="filter-header-title">Search & Filter</span>
+          <button id="admin-clear-filters" class="text-xs text-[#26276b] dark:text-amber-400 hover:underline font-bold">
+            Clear Filters
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <!-- Filter 1: Search by Worker Name -->
+          <div>
+            <label for="admin-filter-worker" class="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1" id="lbl-f-worker">Filter by Worker Name</label>
+            <input type="text" id="admin-filter-worker" placeholder="Type worker name..." class="w-full px-3 py-2 text-xs rounded-lg border outline-none focus:border-[#26276b] dark:focus:border-amber-400">
+          </div>
+
+          <!-- Filter 2: Search by Task / Product -->
+          <div>
+            <label for="admin-filter-task" class="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1" id="lbl-f-task">Filter by Task / Product</label>
+            <input type="text" id="admin-filter-task" placeholder="Type task or product..." class="w-full px-3 py-2 text-xs rounded-lg border outline-none focus:border-[#26276b] dark:focus:border-amber-400">
+          </div>
+
+          <!-- Filter 3: Filter by Date -->
+          <div>
+            <label for="admin-filter-date" class="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1" id="lbl-f-date">Filter by Date</label>
+            <input type="date" id="admin-filter-date" class="w-full px-3 py-2 text-xs rounded-lg border outline-none focus:border-[#26276b] dark:focus:border-amber-400">
+          </div>
+        </div>
+      </div>
+
+      <!-- Full Master Records Table -->
+      <div class="glass-card rounded-xl shadow-md overflow-hidden">
+        <div class="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-white/60 dark:bg-slate-800/60">
+          <h3 class="text-sm font-bold text-[#26276b] dark:text-[#e2ba7d]" id="admin-table-title">All Production Logs</h3>
+          <span id="admin-filter-summary" class="text-xs text-slate-600 dark:text-slate-400">0 records</span>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left rtl:text-right text-sm">
+            <thead class="bg-slate-100/90 dark:bg-slate-800 text-xs uppercase font-semibold text-slate-700 dark:text-slate-300 border-b border-slate-200 dark:border-slate-700">
+              <tr>
+                <th class="py-3 px-3" id="th-a-date">Date</th>
+                <th class="py-3 px-3" id="th-a-time">Exact Time</th>
+                <th class="py-3 px-3" id="th-a-worker">Worker Name</th>
+                <th class="py-3 px-3" id="th-a-task">Product / Task</th>
+                <th class="py-3 px-3 text-right rtl:text-left" id="th-a-qty">Quantity</th>
+                <th class="py-3 px-3 text-center" id="th-a-action">Action</th>
+              </tr>
+            </thead>
+            <tbody id="admin-table-body" class="divide-y divide-slate-100 dark:divide-slate-800 bg-white/70 dark:bg-transparent">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="mt-auto py-4 text-center text-xs text-slate-700 dark:text-slate-400 border-t border-amber-900/10 dark:border-slate-800 glass-header relative z-10" id="footer-text">
+    VG Production Logger • مسجّل الإنتاج
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
