@@ -10,10 +10,7 @@
 (function () {
   'use strict';
 
-  // Supabase Cloud Configuration
-  const SUPABASE_URL = 'https://xyrplvhzlfbsstpknegl.supabase.co';
-  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh5cnBsdmh6bGZic3N0cGtuZWdsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIxNTA3NjMsImV4cCI6MjEwNzcyNjc2M30.4KOkyDp8y2S5rVvoE3cCNckcfR01WdWvnmXwuSkgiJs';
-
+ 
   // Initialize Supabase Client
   let supabase = null;
   try {
