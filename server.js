@@ -20,19 +20,36 @@ app.use(express.static(path.join(__dirname)));
 const DATA_DIR = path.join(__dirname, 'data');
 const DATA_FILE = path.join(DATA_DIR, 'production_data.json');
 
+const DEFAULT_USERS = [
+  { username: 'worker1', password: '123', role: 'worker', name: 'العامل 1' },
+  { username: 'worker2', password: '123', role: 'worker', name: 'العامل 2' },
+  { username: 'worker3', password: '123', role: 'worker', name: 'العامل 3' },
+  { username: 'worker4', password: '123', role: 'worker', name: 'العامل 4' },
+  { username: 'worker5', password: '123', role: 'worker', name: 'العامل 5' },
+  { username: 'supervisor1', password: '123', role: 'supervisor', name: 'المشرف 1' },
+  { username: 'supervisor2', password: '123', role: 'supervisor', name: 'المشرف 2' },
+  { username: 'supervisor3', password: '123', role: 'supervisor', name: 'المشرف 3' },
+  { username: 'admin', password: 'admin123', role: 'admin', name: 'المدير العام' }
+];
+
 function ensureDataFile() {
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
   if (!fs.existsSync(DATA_FILE)) {
-    fs.writeFileSync(DATA_FILE, JSON.stringify({ logs: [], admin: null }, null, 2));
+    fs.writeFileSync(DATA_FILE, JSON.stringify({ logs: [], admin: null, users: DEFAULT_USERS }, null, 2));
   }
 }
 
 function readLocalData() {
   ensureDataFile();
   try {
-    return JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+    const data = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+    if (!data.users || data.users.length === 0) {
+      data.users = JSON.parse(JSON.stringify(DEFAULT_USERS));
+      writeLocalData(data);
+    }
+    return data;
   } catch {
-    return { logs: [], admin: null };
+    return { logs: [], admin: null, users: JSON.parse(JSON.stringify(DEFAULT_USERS)) };
   }
 }
 
@@ -42,12 +59,38 @@ function writeLocalData(data) {
 }
 
 // Mongoose Models
+const userSchema = new mongoose.Schema({
+  username: { type: String, required: true, unique: true, trim: true },
+  password: { type: String, required: true },
+  role: { type: String, enum: ['worker', 'supervisor', 'admin'], required: true },
+  name: { type: String, default: '' },
+  updatedAt: { type: Date, default: Date.now }
+});
+
+userSchema.set('toJSON', {
+  transform: (_, ret) => {
+    ret.id = ret._id.toString();
+    delete ret._id;
+    delete ret.__v;
+    return ret;
+  }
+});
+
+const User = mongoose.model('User', userSchema);
+
 const logSchema = new mongoose.Schema({
   worker: { type: String, required: true, trim: true },
   task: { type: String, required: true, trim: true },
+  product: { type: String, default: '', trim: true },
+  weight: { type: String, default: '', trim: true },
+  unit: { type: String, default: 'kg', trim: true },
   quantity: { type: String, required: true, trim: true },
+  status: { type: String, enum: ['pending', 'in_progress', 'completed'], default: 'pending' },
+  startedAt: { type: String, default: null },
+  finishedAt: { type: String, default: null },
   date: { type: String, required: true },
   time: { type: String, required: true },
+  assignedBy: { type: String, default: null, trim: true },
   createdAt: { type: Date, default: Date.now }
 });
 
@@ -72,6 +115,19 @@ const adminSchema = new mongoose.Schema({
 const Admin = mongoose.model('Admin', adminSchema);
 
 const isMongo = () => mongoose.connection.readyState === 1;
+
+async function seedMongoUsers() {
+  if (!isMongo()) return;
+  try {
+    const count = await User.countDocuments();
+    if (count === 0) {
+      await User.insertMany(DEFAULT_USERS);
+      console.log('✓ Default users seeded in MongoDB');
+    }
+  } catch (err) {
+    console.warn('Could not seed users in Mongo:', err.message);
+  }
+}
 
 // Routes: Health
 app.get('/api/health', (req, res) => {
@@ -100,7 +156,10 @@ app.get('/api/logs', async (req, res) => {
 
 app.post('/api/logs', async (req, res) => {
   try {
-    const { worker, task, quantity, date, time } = req.body;
+    let { worker, task, product, weight, unit, quantity, status, startedAt, finishedAt, date, time, assignedBy } = req.body;
+    if (!quantity && weight) {
+      quantity = `${weight} ${unit || 'kg'}`;
+    }
     if (!worker || !task || !quantity) {
       return res.status(400).json({ error: 'Worker, task, and quantity are required' });
     }
@@ -108,9 +167,16 @@ app.post('/api/logs', async (req, res) => {
     const payload = {
       worker,
       task,
+      product: product || '',
+      weight: weight || '',
+      unit: unit || 'kg',
       quantity,
+      status: status || 'pending',
+      startedAt: startedAt || null,
+      finishedAt: finishedAt || null,
       date: date || new Date().toISOString().slice(0, 10),
       time: time || new Date().toTimeString().slice(0, 8),
+      assignedBy: assignedBy || null,
       createdAt: new Date()
     };
 
@@ -124,6 +190,54 @@ app.post('/api/logs', async (req, res) => {
     data.logs.unshift(newLog);
     writeLocalData(data);
     res.status(201).json(newLog);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.patch('/api/logs/:id/status', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, timestamp } = req.body;
+
+    const validTransitions = {
+      'pending': ['in_progress'],
+      'in_progress': ['completed'],
+      'completed': []
+    };
+
+    if (isMongo()) {
+      const log = await Log.findById(id);
+      if (!log) return res.status(404).json({ error: 'Log not found' });
+      const current = log.status || 'pending';
+      if (!validTransitions[current] || !validTransitions[current].includes(status)) {
+        return res.status(400).json({ error: `Cannot transition from ${current} to ${status}` });
+      }
+      log.status = status;
+      if (status === 'in_progress' && !log.startedAt) {
+        log.startedAt = timestamp || new Date().toTimeString().slice(0, 8);
+      } else if (status === 'completed' && !log.finishedAt) {
+        log.finishedAt = timestamp || new Date().toTimeString().slice(0, 8);
+      }
+      await log.save();
+      return res.json(log);
+    }
+
+    const data = readLocalData();
+    const log = data.logs.find((l) => l.id === id);
+    if (!log) return res.status(404).json({ error: 'Log not found' });
+    const current = log.status || 'pending';
+    if (!validTransitions[current] || !validTransitions[current].includes(status)) {
+      return res.status(400).json({ error: `Cannot transition from ${current} to ${status}` });
+    }
+    log.status = status;
+    if (status === 'in_progress' && !log.startedAt) {
+      log.startedAt = timestamp || new Date().toTimeString().slice(0, 8);
+    } else if (status === 'completed' && !log.finishedAt) {
+      log.finishedAt = timestamp || new Date().toTimeString().slice(0, 8);
+    }
+    writeLocalData(data);
+    res.json(log);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -209,11 +323,122 @@ app.post('/api/admin/login', async (req, res) => {
   }
 });
 
+// Routes: Universal Login (workers, supervisors, admin)
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    if (!username || !password) {
+      return res.status(400).json({ error: 'Username and password are required' });
+    }
+
+    const cleanUser = username.trim().toLowerCase();
+
+    if (isMongo()) {
+      const user = await User.findOne({ username: new RegExp(`^${cleanUser}$`, 'i'), password });
+      if (user) {
+        return res.json({
+          success: true,
+          user: { username: user.username, role: user.role, name: user.name }
+        });
+      }
+    }
+
+    const data = readLocalData();
+    const user = (data.users || []).find(
+      u => u.username.toLowerCase() === cleanUser && u.password === password
+    );
+
+    if (user) {
+      return res.json({
+        success: true,
+        user: { username: user.username, role: user.role, name: user.name }
+      });
+    }
+
+    // Fallback: legacy admin credentials
+    if (data.admin && data.admin.username.toLowerCase() === cleanUser && data.admin.password === password) {
+      return res.json({
+        success: true,
+        user: { username: data.admin.username, role: 'admin', name: 'المدير العام' }
+      });
+    }
+
+    res.status(401).json({ error: 'اسم المستخدم أو كلمة المرور غير صحيحة' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Route: Get all users (Admin Settings)
+app.get('/api/users', async (req, res) => {
+  try {
+    if (isMongo()) {
+      const users = await User.find().sort({ role: 1, username: 1 });
+      if (users.length > 0) return res.json(users);
+    }
+    const data = readLocalData();
+    res.json(data.users || DEFAULT_USERS);
+  } catch (err) {
+    const data = readLocalData();
+    res.json(data.users || DEFAULT_USERS);
+  }
+});
+
+// Route: Edit credentials (Admin Settings)
+app.put('/api/users/:username', async (req, res) => {
+  try {
+    const { username } = req.params;
+    const { password, name, role } = req.body;
+    const cleanUser = username.trim().toLowerCase();
+
+    if (isMongo()) {
+      const user = await User.findOne({ username: new RegExp(`^${cleanUser}$`, 'i') });
+      if (user) {
+        if (password) user.password = password;
+        if (name) user.name = name;
+        if (role) user.role = role;
+        user.updatedAt = new Date();
+        await user.save();
+        return res.json({ success: true, user });
+      }
+    }
+
+    const data = readLocalData();
+    data.users = data.users || JSON.parse(JSON.stringify(DEFAULT_USERS));
+    const user = data.users.find(u => u.username.toLowerCase() === cleanUser);
+    if (user) {
+      if (password) user.password = password;
+      if (name) user.name = name;
+      if (role) user.role = role;
+      user.updatedAt = new Date().toISOString();
+      writeLocalData(data);
+      return res.json({ success: true, user });
+    }
+
+    const newUser = {
+      username,
+      password: password || '123',
+      role: role || 'worker',
+      name: name || username,
+      updatedAt: new Date().toISOString()
+    };
+    if (isMongo()) {
+      await User.create(newUser);
+    }
+    data.users.push(newUser);
+    writeLocalData(data);
+    res.json({ success: true, user: newUser });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Server boot
 async function start() {
   try {
     await mongoose.connect(MONGODB_URI, { serverSelectionTimeoutMS: 3000 });
     console.log('✓ MongoDB connected successfully');
+    await seedMongoUsers();
   } catch (err) {
     console.warn(`! MongoDB offline (${err.message}). Using local JSON storage fallback.`);
   }

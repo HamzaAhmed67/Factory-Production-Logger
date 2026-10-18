@@ -91,11 +91,21 @@ body {
 input[type="text"],
 input[type="password"],
 input[type="number"],
-input[type="date"] {
+input[type="date"],
+select {
   background-color: var(--input-bg);
   border-color: var(--input-border);
   color: var(--text-primary);
   transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+select {
+  cursor: pointer;
+}
+
+html.dark select option {
+  background-color: #1c1824;
+  color: #f8fafc;
 }
 
 html.dark input[type="date"]::-webkit-calendar-picker-indicator {
