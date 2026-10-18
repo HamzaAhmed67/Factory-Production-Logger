@@ -54,7 +54,7 @@
 
   <!-- Corporate Header -->
   <header class="glass-header px-4 py-2.5 sticky top-0 z-30 shadow-sm border-b border-slate-200 dark:border-slate-800">
-    <div class="max-w-5xl mx-auto flex items-center justify-between">
+    <div class="max-w-5xl mx-auto flex flex-wrap items-center justify-between gap-2">
 
       <!-- Brand & Clock -->
       <div class="flex items-center space-x-3 rtl:space-x-reverse cursor-pointer" id="header-logo-btn">
@@ -345,7 +345,7 @@
         </div>
 
         <!-- Navigation Tabs (Admin only) -->
-        <div id="admin-tabs-container" class="hidden flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-bold space-x-1 rtl:space-x-reverse">
+        <div id="admin-tabs-container" class="hidden flex flex-wrap items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-bold gap-1">
           <button type="button" id="tab-btn-production"
             class="px-3 py-1.5 rounded bg-white dark:bg-slate-900 text-[#1e2540] dark:text-[#d4aa65] shadow-sm transition">
             لوحة عمليات الإنتاج
@@ -357,7 +357,7 @@
         </div>
 
         <!-- Global Actions: Exports & Logout -->
-        <div class="flex flex-wrap items-center gap-1.5">
+        <div class="w-full sm:w-auto flex flex-wrap items-center gap-1.5 justify-start sm:justify-end">
           <button id="admin-export-excel"
             class="px-3 py-1.5 text-xs font-bold rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-[#1e2540] dark:text-[#d4aa65] transition shadow-sm">
             <span id="btn-export-excel-text">تصدير Excel</span>
@@ -568,7 +568,7 @@
           </div>
 
           <div class="overflow-x-auto">
-            <table class="w-full text-left rtl:text-right text-xs">
+            <table class="w-full text-left rtl:text-right text-xs min-w-[760px] whitespace-nowrap">
               <thead class="bg-slate-100 dark:bg-slate-800/90 text-[11px] uppercase font-bold text-slate-700 dark:text-slate-300 border-b border-slate-200 dark:border-slate-700">
                 <tr>
                   <th class="py-2.5 px-3" id="th-a-date">Date</th>
@@ -607,7 +607,7 @@
 
           <!-- Accounts Management Table -->
           <div class="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800">
-            <table class="w-full text-left rtl:text-right text-xs">
+            <table class="w-full text-left rtl:text-right text-xs min-w-[620px] whitespace-nowrap">
               <thead class="bg-slate-100 dark:bg-slate-800/90 text-[11px] uppercase font-bold text-slate-700 dark:text-slate-300 border-b border-slate-200 dark:border-slate-700">
                 <tr>
                   <th class="py-2.5 px-3">مستوى الصلاحية (Role)</th>

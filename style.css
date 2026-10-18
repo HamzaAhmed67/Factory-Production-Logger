@@ -136,6 +136,21 @@ button, input {
   transition: all 0.15s ease-in-out;
 }
 
+/* Touch scrolling & Table Responsiveness */
+.overflow-x-auto {
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+.overflow-x-auto::-webkit-scrollbar {
+  height: 6px;
+}
+
+.overflow-x-auto::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.5);
+  border-radius: 4px;
+}
+
 /* Toast animation */
 @keyframes slideDown {
   from {
@@ -150,4 +165,15 @@ button, input {
 
 .animate-toast {
   animation: slideDown 0.2s ease-out forwards;
+}
+
+/* Mobile responsive fine-tuning */
+@media (max-width: 640px) {
+  .glass-card {
+    padding: 1rem !important;
+  }
+
+  button, input, select {
+    font-size: 13px !important;
+  }
 }

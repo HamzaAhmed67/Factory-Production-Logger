@@ -912,7 +912,7 @@
           </div>
 
           <!-- 3 Stages Visual Progress -->
-          <div class="grid grid-cols-3 gap-1.5 text-center text-xs font-mono font-bold">
+          <div class="grid grid-cols-3 gap-1.5 text-center text-[10px] sm:text-xs font-mono font-bold leading-tight">
             <!-- Stage 1 -->
             <div class="py-1.5 px-1 rounded transition ${
               isPending 
