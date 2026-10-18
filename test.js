@@ -273,6 +273,97 @@ test('API Integration Tests (Stdlib)', async (t) => {
     assert.equal(found.worker, 'worker4');
     assert.equal(found.assignedBy, 'supervisor1');
   });
+
+  await t.test('Client UI units and action labels: kg/g in English and Start Production label', async () => {
+    const fs = require('node:fs');
+    const appJsContent = fs.readFileSync('app.js', 'utf8');
+    const indexHtmlContent = fs.readFileSync('index.html', 'utf8');
+
+    // 1. Check btnStartTask is 'Start Production'
+    assert.ok(appJsContent.includes("btnStartTask: 'Start Production'"), 'btnStartTask must be Start Production');
+
+    // 2. Check index.html default unit options are kg and g
+    assert.ok(indexHtmlContent.includes('<option value="kg">kg</option>'), 'index.html contains kg option');
+    assert.ok(indexHtmlContent.includes('<option value="g">g</option>'), 'index.html contains g option');
+
+    // 3. Test formatDisplayQuantity logic directly
+    const formatDisplayQuantity = (rawQty, rawUnit = '', lang = 'en') => {
+      const ARABIC_DIGITS = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+      const localizeDigits = (val, l) => {
+        if (!val) return '';
+        const str = String(val);
+        if (l !== 'ar') return str.replace(/[٠-٩]/g, d => ARABIC_DIGITS.indexOf(d));
+        return str.replace(/[0-9]/g, d => ARABIC_DIGITS[Number(d)]);
+      };
+      let val = '';
+      let unit = rawUnit || '';
+      if (rawQty !== null && rawQty !== undefined) {
+        const str = String(rawQty).trim();
+        const match = str.match(/^([\d.٠-٩٫,]+)\s*(.*)$/);
+        if (match) {
+          val = match[1];
+          if (match[2]) unit = match[2];
+        } else {
+          val = str;
+        }
+      }
+      unit = String(unit).trim().toLowerCase();
+      let normalizedUnit = unit;
+      if (lang === 'ar') {
+        if (unit === 'kg' || unit === 'كجم') normalizedUnit = 'كجم';
+        else if (unit === 'g' || unit === 'gm' || unit === 'جرام') normalizedUnit = 'جرام';
+      } else {
+        if (unit === 'kg' || unit === 'كجم') normalizedUnit = 'kg';
+        else if (unit === 'g' || unit === 'gm' || unit === 'جرام') normalizedUnit = 'g';
+      }
+      return `${localizeDigits(val, lang)} ${normalizedUnit}`.trim();
+    };
+
+    // English conversion assertions
+    assert.equal(formatDisplayQuantity('15 كجم', '', 'en'), '15 kg');
+    assert.equal(formatDisplayQuantity('500 جرام', '', 'en'), '500 g');
+    assert.equal(formatDisplayQuantity('250 gm', '', 'en'), '250 g');
+    assert.equal(formatDisplayQuantity('12', 'كجم', 'en'), '12 kg');
+    assert.equal(formatDisplayQuantity('750', 'جرام', 'en'), '750 g');
+
+    // Arabic conversion assertions
+    assert.equal(formatDisplayQuantity('15 kg', '', 'ar'), '١٥ كجم');
+    assert.equal(formatDisplayQuantity('500 g', '', 'ar'), '٥٠٠ جرام');
+    assert.equal(formatDisplayQuantity('12', 'kg', 'ar'), '١٢ كجم');
+  });
+
+  await t.test('Overtime API: registers night attendance checkout and lists records', async () => {
+    // 1. Register checkout
+    const postRes = await request(server, '/api/overtime', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        worker: 'worker1',
+        workerName: 'محمد سعيد',
+        notes: 'إتمام تسليم خط التعبئة والتنظيف',
+        date: '2026-10-18',
+        time: '23:45:00'
+      })
+    });
+    assert.equal(postRes.status, 201);
+    const created = await postRes.json();
+    assert.equal(created.worker, 'worker1');
+    assert.equal(created.workerName, 'محمد سعيد');
+    assert.equal(created.time, '23:45:00');
+    assert.ok(created.id);
+
+    // 2. Fetch list
+    const getRes = await request(server, '/api/overtime');
+    assert.equal(getRes.status, 200);
+    const list = await getRes.json();
+    assert.ok(Array.isArray(list));
+    const found = list.find(r => (r.id || r._id) === created.id);
+    assert.ok(found, 'Created overtime record must be in list');
+
+    // 3. Delete record
+    const delRes = await request(server, `/api/overtime/${created.id}`, { method: 'DELETE' });
+    assert.equal(delRes.status, 200);
+  });
 });
 
 

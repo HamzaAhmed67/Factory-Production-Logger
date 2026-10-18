@@ -1,41 +1,41 @@
 /* Clean, Modern Bilingual Stylesheet with Light & Dark Modes */
 :root {
   --bg-primary: #d9bda5;
-  --brand-navy: #26276b;
-  --brand-navy-hover: #1b1c52;
+  --brand-navy: #1e2540;
+  --brand-navy-hover: #141a2e;
   --brand-gold: #c89b53;
-  --card-bg: rgba(255, 255, 255, 0.94);
-  --card-border: rgba(255, 255, 255, 0.7);
-  --header-bg: rgba(255, 255, 255, 0.92);
-  --header-border: rgba(160, 130, 105, 0.25);
-  --text-primary: #1e293b;
-  --text-muted: #64748b;
+  --card-bg: rgba(255, 255, 255, 0.96);
+  --card-border: rgba(255, 255, 255, 0.85);
+  --header-bg: rgba(255, 255, 255, 0.95);
+  --header-border: rgba(160, 130, 105, 0.3);
+  --text-primary: #0f172a;
+  --text-muted: #334155;
   --input-bg: #ffffff;
-  --input-border: #cbd5e1;
-  --table-header-bg: rgba(241, 245, 249, 0.9);
-  --table-row-bg: rgba(255, 255, 255, 0.75);
-  --table-border: #e2e8f0;
-  --watermark-opacity: 0.16;
+  --input-border: #94a3b8;
+  --table-header-bg: rgba(241, 245, 249, 0.98);
+  --table-row-bg: rgba(255, 255, 255, 0.9);
+  --table-border: #cbd5e1;
+  --watermark-opacity: 0.10;
 }
 
 /* Dark Mode Theme Variables */
 html.dark {
-  --bg-primary: #141118;
+  --bg-primary: #0b0f17;
   --brand-navy: #3b3e94;
   --brand-navy-hover: #4c50b5;
   --brand-gold: #e2ba7d;
-  --card-bg: rgba(28, 24, 34, 0.92);
-  --card-border: rgba(217, 189, 165, 0.18);
-  --header-bg: rgba(22, 18, 28, 0.94);
-  --header-border: rgba(217, 189, 165, 0.15);
-  --text-primary: #f8fafc;
-  --text-muted: #94a3b8;
-  --input-bg: #1c1824;
-  --input-border: #3d3548;
-  --table-header-bg: rgba(38, 32, 48, 0.95);
-  --table-row-bg: rgba(28, 24, 34, 0.7);
-  --table-border: #2e283b;
-  --watermark-opacity: 0.12;
+  --card-bg: rgba(22, 27, 34, 0.95);
+  --card-border: rgba(217, 189, 165, 0.22);
+  --header-bg: rgba(17, 21, 28, 0.96);
+  --header-border: rgba(217, 189, 165, 0.18);
+  --text-primary: #ffffff;
+  --text-muted: #cbd5e1;
+  --input-bg: #161b22;
+  --input-border: #475569;
+  --table-header-bg: rgba(30, 36, 46, 0.98);
+  --table-row-bg: rgba(22, 27, 34, 0.85);
+  --table-border: #334155;
+  --watermark-opacity: 0.08;
 }
 
 body {
@@ -167,6 +167,50 @@ button, input {
   animation: slideDown 0.2s ease-out forwards;
 }
 
+/* Portal Selection Cards */
+.portal-card {
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.portal-card:hover {
+  transform: translateY(-3px);
+}
+
+.portal-card:active {
+  transform: scale(0.99);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+/* Modal Entrance Animation */
+@keyframes modalScaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.animate-modal-in {
+  animation: modalScaleIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
 /* Mobile responsive fine-tuning */
 @media (max-width: 640px) {
   .glass-card {
@@ -177,3 +221,4 @@ button, input {
     font-size: 13px !important;
   }
 }
+
