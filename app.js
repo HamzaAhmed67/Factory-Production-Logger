@@ -157,7 +157,7 @@
       thUName: 'Display Name',
       thUPassword: 'Password',
       thUAction: 'Save Action',
-      lblCredWorkers: 'Production Operators (Worker - Password: 123):',
+      lblCredWorkers: 'Production Operators (Password: 123):',
       lblCredSupervisors: 'Supervisors & Management (Password: 123):',
       lblCredAdmin: 'System Administrator (Password: 123):',
       optFilterAllWorkers: 'All Operators',
@@ -331,7 +331,7 @@
       thUName: 'الاسم المعروض',
       thUPassword: 'كلمة المرور',
       thUAction: 'إجراء الحفظ',
-      lblCredWorkers: 'مشغلو الإنتاج (عامل - Password: 123):',
+      lblCredWorkers: 'مشغلو الإنتاج (Password: 123):',
       lblCredSupervisors: 'المشرفون والإدارة (Password: 123):',
       lblCredAdmin: 'مدير النظام (System Admin - Password: 123):',
       optFilterAllWorkers: 'جميع المشغلين',
@@ -854,11 +854,9 @@
       if (currentUser.role === 'worker') {
         const nameEl = document.getElementById('worker-active-name');
         const otNameEl = document.getElementById('overtime-active-name');
-        const roleName = (currentUser.roleTitle && ROLE_LABELS[lang] && ROLE_LABELS[lang][currentUser.roleTitle]) || currentUser.roleTitle;
-        const workerTitle = roleName ? ` (${roleName})` : '';
         const displayName = currentUser.name || getWorkerDisplayName(currentUser.username, lang);
-        if (nameEl) nameEl.textContent = displayName + workerTitle;
-        if (otNameEl) otNameEl.textContent = displayName + workerTitle;
+        if (nameEl) nameEl.textContent = displayName;
+        if (otNameEl) otNameEl.textContent = displayName;
         renderWorkerTasks();
         renderWorkerOvertimeHistory();
       } else {
@@ -1020,18 +1018,16 @@
     }
 
     if (user.role === 'worker') {
-      const roleName = (user.roleTitle && ROLE_LABELS[currentLang] && ROLE_LABELS[currentLang][user.roleTitle]) || user.roleTitle;
-      const workerTitle = roleName ? ` (${roleName})` : '';
       const displayName = user.name || getWorkerDisplayName(user.username, currentLang);
 
       if (selectedPortal === 'overtime') {
         const otNameEl = document.getElementById('overtime-active-name');
-        if (otNameEl) otNameEl.textContent = displayName + workerTitle;
+        if (otNameEl) otNameEl.textContent = displayName;
         showView('overtime');
         loadOvertimeRecords();
       } else {
         const nameEl = document.getElementById('worker-active-name');
-        if (nameEl) nameEl.textContent = displayName + workerTitle;
+        if (nameEl) nameEl.textContent = displayName;
         showView('worker');
         renderWorkerTasks();
       }
