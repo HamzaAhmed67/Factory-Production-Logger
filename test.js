@@ -141,18 +141,18 @@ test('API Integration Tests (Stdlib)', async (t) => {
     const workerRes = await request(server, '/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: 'worker1', password: '123' })
+      body: JSON.stringify({ username: 'Mohamed Saeed', password: '123' })
     });
     assert.equal(workerRes.status, 200);
     const workerBody = await workerRes.json();
     assert.equal(workerBody.user.role, 'worker');
-    assert.equal(workerBody.user.username, 'worker1');
+    assert.equal(workerBody.user.username, 'Mohamed Saeed');
 
     // Supervisor login
     const superRes = await request(server, '/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: 'supervisor1', password: '123' })
+      body: JSON.stringify({ username: 'Ahmed Khaled', password: '123' })
     });
     assert.equal(superRes.status, 200);
     const superBody = await superRes.json();
@@ -162,7 +162,7 @@ test('API Integration Tests (Stdlib)', async (t) => {
     const adminRes = await request(server, '/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: 'admin', password: 'admin123' })
+      body: JSON.stringify({ username: 'Admin', password: '123' })
     });
     assert.equal(adminRes.status, 200);
     const adminBody = await adminRes.json();
@@ -172,7 +172,7 @@ test('API Integration Tests (Stdlib)', async (t) => {
     const badRes = await request(server, '/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: 'admin', password: 'bad' })
+      body: JSON.stringify({ username: 'Admin', password: 'bad' })
     });
     assert.equal(badRes.status, 401);
   });
@@ -182,10 +182,10 @@ test('API Integration Tests (Stdlib)', async (t) => {
     assert.equal(listRes.status, 200);
     const users = await listRes.json();
     assert.ok(Array.isArray(users));
-    assert.ok(users.length >= 9);
+    assert.ok(users.length >= 8);
 
-    // Edit worker2 password
-    const putRes = await request(server, '/api/users/worker2', {
+    // Edit Ahmed Abd El Nasser password
+    const putRes = await request(server, '/api/users/Ahmed Abd El Nasser', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ password: 'newpass456', name: 'عامل مجتهد' })
@@ -196,7 +196,7 @@ test('API Integration Tests (Stdlib)', async (t) => {
     const testLogin = await request(server, '/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: 'worker2', password: 'newpass456' })
+      body: JSON.stringify({ username: 'Ahmed Abd El Nasser', password: 'newpass456' })
     });
     assert.equal(testLogin.status, 200);
     const testBody = await testLogin.json();

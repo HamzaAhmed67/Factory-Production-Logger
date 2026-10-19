@@ -21,18 +21,14 @@ const DATA_DIR = path.join(__dirname, 'data');
 const DATA_FILE = path.join(DATA_DIR, 'production_data.json');
 
 const DEFAULT_USERS = [
-  { username: 'hamza', password: '123', role: 'admin', name: 'حمزه', roleTitle: 'اونر السيرفر' },
-  { username: 'salwa', password: '123', role: 'supervisor', name: 'سلوى', roleTitle: 'مدير تنفيذي' },
-  { username: 'hossam', password: '123', role: 'supervisor', name: 'حسام', roleTitle: 'مدير انتاج' },
-  { username: 'ahmed', password: '123', role: 'supervisor', name: 'احمد خالد', roleTitle: 'مشرف انتاج' },
-  { username: 'worker1', password: '123', role: 'worker', name: 'محمد سعيد', roleTitle: 'عمال' },
-  { username: 'worker2', password: '123', role: 'worker', name: 'احمد عبد الناصر', roleTitle: 'عمال' },
-  { username: 'worker3', password: '123', role: 'worker', name: 'محمد حمدي', roleTitle: 'عمال' },
-  { username: 'worker4', password: '123', role: 'worker', name: 'يوسف خالد', roleTitle: 'عمال' },
-  { username: 'admin', password: 'admin123', role: 'admin', name: 'حمزه', roleTitle: 'اونر السيرفر' },
-  { username: 'supervisor1', password: '123', role: 'supervisor', name: 'احمد خالد', roleTitle: 'مشرف انتاج' },
-  { username: 'supervisor2', password: '123', role: 'supervisor', name: 'حسام', roleTitle: 'مدير انتاج' },
-  { username: 'supervisor3', password: '123', role: 'supervisor', name: 'سلوى', roleTitle: 'مدير تنفيذي' }
+  { username: 'Admin', password: '123', role: 'admin', name: 'حمزه', roleTitle: 'اونر السيرفر' },
+  { username: 'Salwa', password: '123', role: 'admin', name: 'سلوى', roleTitle: 'مدير تنفيذي' },
+  { username: 'Hossam', password: '123', role: 'admin', name: 'حسام', roleTitle: 'مدير انتاج' },
+  { username: 'Ahmed Khaled', password: '123', role: 'supervisor', name: 'احمد خالد', roleTitle: 'مشرف انتاج' },
+  { username: 'Mohamed Saeed', password: '123', role: 'worker', name: 'محمد سعيد', roleTitle: 'عمال' },
+  { username: 'Ahmed Abd El Nasser', password: '123', role: 'worker', name: 'احمد عبد الناصر', roleTitle: 'عمال' },
+  { username: 'Mohamed Hamdy', password: '123', role: 'worker', name: 'محمد حمدي', roleTitle: 'عمال' },
+  { username: 'Youseef Khaled', password: '123', role: 'worker', name: 'يوسف خالد', roleTitle: 'عمال' }
 ];
 
 function ensureDataFile() {
@@ -435,11 +431,15 @@ app.post('/api/auth/login', async (req, res) => {
 
     const cleanUser = normalizeArabicDigits(username).trim().toLowerCase();
     const cleanPass = normalizeArabicDigits(password).trim();
+    const userNoSpace = cleanUser.replace(/[\s_-]+/g, '');
 
     if (isMongo()) {
-      const user = await User.findOne({
-        username: new RegExp(`^${cleanUser}$`, 'i'),
+      const allUsers = await User.find({
         $or: [{ password: cleanPass }, { password: password }]
+      });
+      const user = allUsers.find(u => {
+        const dbU = String(u.username || '').trim().toLowerCase();
+        return dbU === cleanUser || dbU.replace(/[\s_-]+/g, '') === userNoSpace;
       });
       if (user) {
         return res.json({
@@ -455,10 +455,12 @@ app.post('/api/auth/login', async (req, res) => {
     }
 
     const data = readLocalData();
-    const user = (data.users || []).find(
-      u => u.username.toLowerCase() === cleanUser &&
-           (u.password === cleanPass || u.password === password)
-    );
+    const user = (data.users || []).find(u => {
+      const dbU = String(u.username || '').trim().toLowerCase();
+      const passOk = (u.password === cleanPass || u.password === password);
+      const userOk = (dbU === cleanUser || dbU.replace(/[\s_-]+/g, '') === userNoSpace);
+      return userOk && passOk;
+    });
 
     if (user) {
       return res.json({

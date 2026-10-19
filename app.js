@@ -15,25 +15,26 @@
 
   // Default fallback users for zero-downtime offline support
   const DEFAULT_USERS = [
-    { username: 'hamza', password: '123', role: 'admin', name: 'حمزه', roleTitle: 'اونر السيرفر' },
-    { username: 'salwa', password: '123', role: 'supervisor', name: 'سلوى', roleTitle: 'مدير تنفيذي' },
-    { username: 'hossam', password: '123', role: 'supervisor', name: 'حسام', roleTitle: 'مدير انتاج' },
-    { username: 'ahmed', password: '123', role: 'supervisor', name: 'احمد خالد', roleTitle: 'مشرف انتاج' },
-    { username: 'worker1', password: '123', role: 'worker', name: 'محمد سعيد', roleTitle: 'عمال' },
-    { username: 'worker2', password: '123', role: 'worker', name: 'احمد عبد الناصر', roleTitle: 'عمال' },
-    { username: 'worker3', password: '123', role: 'worker', name: 'محمد حمدي', roleTitle: 'عمال' },
-    { username: 'worker4', password: '123', role: 'worker', name: 'يوسف خالد', roleTitle: 'عمال' },
-    { username: 'admin', password: 'admin123', role: 'admin', name: 'حمزه', roleTitle: 'اونر السيرفر' },
-    { username: 'supervisor1', password: '123', role: 'supervisor', name: 'احمد خالد', roleTitle: 'مشرف انتاج' },
-    { username: 'supervisor2', password: '123', role: 'supervisor', name: 'حسام', roleTitle: 'مدير انتاج' },
-    { username: 'supervisor3', password: '123', role: 'supervisor', name: 'سلوى', roleTitle: 'مدير تنفيذي' }
+    { username: 'Admin', password: '123', role: 'admin', name: 'حمزه', roleTitle: 'اونر السيرفر' },
+    { username: 'Salwa', password: '123', role: 'admin', name: 'سلوى', roleTitle: 'مدير تنفيذي' },
+    { username: 'Hossam', password: '123', role: 'admin', name: 'حسام', roleTitle: 'مدير انتاج' },
+    { username: 'Ahmed Khaled', password: '123', role: 'supervisor', name: 'احمد خالد', roleTitle: 'مشرف انتاج' },
+    { username: 'Mohamed Saeed', password: '123', role: 'worker', name: 'محمد سعيد', roleTitle: 'عمال' },
+    { username: 'Ahmed Abd El Nasser', password: '123', role: 'worker', name: 'احمد عبد الناصر', roleTitle: 'عمال' },
+    { username: 'Mohamed Hamdy', password: '123', role: 'worker', name: 'محمد حمدي', roleTitle: 'عمال' },
+    { username: 'Youseef Khaled', password: '123', role: 'worker', name: 'يوسف خالد', roleTitle: 'عمال' }
   ];
 
   const WORKER_NAMES = {
     worker1: { ar: 'محمد سعيد', en: 'Mohamed Saeed' },
     worker2: { ar: 'احمد عبد الناصر', en: 'Ahmed Abdel Nasser' },
     worker3: { ar: 'محمد حمدي', en: 'Mohamed Hamdy' },
-    worker4: { ar: 'يوسف خالد', en: 'Youssef Khaled' }
+    worker4: { ar: 'يوسف خالد', en: 'Youssef Khaled' },
+    'mohamed saeed': { ar: 'محمد سعيد', en: 'Mohamed Saeed' },
+    'ahmed abd el nasser': { ar: 'احمد عبد الناصر', en: 'Ahmed Abdel Nasser' },
+    'mohamed hamdy': { ar: 'محمد حمدي', en: 'Mohamed Hamdy' },
+    'youseef khaled': { ar: 'يوسف خالد', en: 'Youssef Khaled' },
+    'youssef khaled': { ar: 'يوسف خالد', en: 'Youssef Khaled' }
   };
 
   function getWorkerDisplayName(workerIdentifier, lang = currentLang) {
@@ -95,7 +96,7 @@
       portalMainHeading: 'Factory Daily Production Logger',
       portalMainSubheading: 'Fast and direct production logging on the shop floor. Select a portal to proceed.',
       portalWorkerTitle: 'Worker Portal',
-      portalWorkerDesc: 'No password needed. Enter your name, product, quantity (kg/g), and log immediately.',
+      portalWorkerDesc: 'Sign in with your account to execute work orders and log production quantities (kg/g) immediately.',
       portalWorkerAction: 'Enter Worker Portal →',
       portalOvertimeTitle: 'Night Shift Portal',
       portalOvertimeDesc: 'Overtime and night attendance check-out. Register departure time directly.',
@@ -269,7 +270,7 @@
       portalMainHeading: 'مسجّل الإنتاج اليومي للمصنع',
       portalMainSubheading: 'تسجيل سريع ومباشر للإنتاج في صالة العمل. اختر البوابة للمتابعة.',
       portalWorkerTitle: 'بوابة العمال',
-      portalWorkerDesc: 'بدون كلمة مرور. اكتب اسمك، المنتج، الكمية (كجم/جرام)، وسجّل فوراً.',
+      portalWorkerDesc: 'سجّل الدخول بحسابك لتسجيل كميات الإنتاج (كجم/جرام) وتنفيذ أوامر التشغيل فوراً.',
       portalWorkerAction: 'دخول بوابة العمال ←',
       portalOvertimeTitle: 'بوابة بصمة السهر',
       portalOvertimeDesc: 'تسجيل انصراف ومواعيد السهر للعمال. وثق وقت خروجك الفعلي مباشرة.',
@@ -1052,8 +1053,10 @@
       if (tabSettings) {
         if (canManageUsers) {
           tabSettings.classList.remove('hidden');
+          tabSettings.style.display = '';
         } else {
           tabSettings.classList.add('hidden');
+          tabSettings.style.display = 'none';
         }
       }
 
@@ -1068,7 +1071,8 @@
 
   // Admin Tab Switcher (Production vs Overtime vs Admin Settings)
   function switchAdminTab(tabName) {
-    if (tabName === 'settings' && !isServerOwner(currentUser)) {
+    const isOwner = isServerOwner(currentUser);
+    if (tabName === 'settings' && !isOwner) {
       tabName = 'production';
     }
     currentAdminTab = tabName;
@@ -1084,11 +1088,21 @@
 
     if (tabBtnProd) tabBtnProd.className = tabName === 'production' ? activeClass : inactiveClass;
     if (tabBtnOt) tabBtnOt.className = tabName === 'overtime' ? activeClass : inactiveClass;
-    if (tabBtnSettings) tabBtnSettings.className = tabName === 'settings' ? activeClass : inactiveClass;
+    if (tabBtnSettings) {
+      if (isOwner) {
+        tabBtnSettings.className = (tabName === 'settings' ? activeClass : inactiveClass);
+        tabBtnSettings.classList.remove('hidden');
+        tabBtnSettings.style.display = '';
+      } else {
+        tabBtnSettings.className = inactiveClass + ' hidden';
+        tabBtnSettings.classList.add('hidden');
+        tabBtnSettings.style.display = 'none';
+      }
+    }
 
     if (subProd) subProd.classList.toggle('hidden', tabName !== 'production');
     if (subOt) subOt.classList.toggle('hidden', tabName !== 'overtime');
-    if (subSettings) subSettings.classList.toggle('hidden', tabName !== 'settings');
+    if (subSettings) subSettings.classList.toggle('hidden', !isOwner || tabName !== 'settings');
 
     if (tabName === 'settings') {
       loadAdminUsersTable();
@@ -1522,10 +1536,18 @@
     const t = I18N[currentLang];
     if (!container) return;
 
-    const myWorkerUser = (currentUser ? currentUser.username : 'worker1').toLowerCase();
-    const myTasks = records.filter(
-      r => (r.worker || '').trim().toLowerCase() === myWorkerUser
-    );
+    const myWorkerUser = (currentUser ? currentUser.username : '').trim().toLowerCase();
+    const myWorkerNoSpace = myWorkerUser.replace(/[\s_-]+/g, '');
+    const myTasks = records.filter(r => {
+      const w = (r.worker || '').trim().toLowerCase();
+      if (!w) return false;
+      if (w === myWorkerUser || w.replace(/[\s_-]+/g, '') === myWorkerNoSpace) return true;
+      if (myWorkerUser.includes('saeed') && w === 'worker1') return true;
+      if (myWorkerUser.includes('nasser') && w === 'worker2') return true;
+      if (myWorkerUser.includes('hamdy') && w === 'worker3') return true;
+      if (myWorkerUser.includes('khaled') && w === 'worker4') return true;
+      return false;
+    });
 
     if (countEl) {
       countEl.textContent = `${myTasks.length} ${currentLang === 'ar' ? 'أوامر' : 'orders'}`;
