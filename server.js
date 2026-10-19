@@ -21,14 +21,14 @@ const DATA_DIR = path.join(__dirname, 'data');
 const DATA_FILE = path.join(DATA_DIR, 'production_data.json');
 
 const DEFAULT_USERS = [
-  { username: 'Admin', password: '123', role: 'admin', name: 'حمزه', roleTitle: 'اونر السيرفر' },
+  { username: 'Admin', password: '123', role: 'admin', name: 'حمزه', roleTitle: 'مدير النظام' },
   { username: 'Salwa', password: '123', role: 'admin', name: 'سلوى', roleTitle: 'مدير تنفيذي' },
   { username: 'Hossam', password: '123', role: 'admin', name: 'حسام', roleTitle: 'مدير انتاج' },
   { username: 'Ahmed Khaled', password: '123', role: 'supervisor', name: 'احمد خالد', roleTitle: 'مشرف انتاج' },
-  { username: 'Mohamed Saeed', password: '123', role: 'worker', name: 'محمد سعيد', roleTitle: 'عمال' },
-  { username: 'Ahmed Abd El Nasser', password: '123', role: 'worker', name: 'احمد عبد الناصر', roleTitle: 'عمال' },
-  { username: 'Mohamed Hamdy', password: '123', role: 'worker', name: 'محمد حمدي', roleTitle: 'عمال' },
-  { username: 'Youseef Khaled', password: '123', role: 'worker', name: 'يوسف خالد', roleTitle: 'عمال' }
+  { username: 'Mohamed Saeed', password: '123', role: 'worker', name: 'محمد سعيد', roleTitle: 'عامل' },
+  { username: 'Ahmed Abd El Nasser', password: '123', role: 'worker', name: 'احمد عبد الناصر', roleTitle: 'عامل' },
+  { username: 'Mohamed Hamdy', password: '123', role: 'worker', name: 'محمد حمدي', roleTitle: 'عامل' },
+  { username: 'Youseef Khaled', password: '123', role: 'worker', name: 'يوسف خالد', roleTitle: 'عامل' }
 ];
 
 function ensureDataFile() {
@@ -448,7 +448,7 @@ app.post('/api/auth/login', async (req, res) => {
             username: user.username,
             role: user.role,
             name: user.name,
-            roleTitle: user.roleTitle || (user.role === 'admin' ? 'اونر السيرفر' : (user.role === 'supervisor' ? 'مشرف انتاج' : 'عمال'))
+            roleTitle: user.roleTitle || (user.role === 'admin' ? 'مدير النظام' : (user.role === 'supervisor' ? 'مشرف انتاج' : 'عامل'))
           }
         });
       }
@@ -469,7 +469,7 @@ app.post('/api/auth/login', async (req, res) => {
           username: user.username,
           role: user.role,
           name: user.name,
-          roleTitle: user.roleTitle || (user.role === 'admin' ? 'اونر السيرفر' : (user.role === 'supervisor' ? 'مشرف انتاج' : 'عمال'))
+          roleTitle: user.roleTitle || (user.role === 'admin' ? 'مدير النظام' : (user.role === 'supervisor' ? 'مشرف انتاج' : 'عامل'))
         }
       });
     }

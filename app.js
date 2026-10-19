@@ -15,14 +15,14 @@
 
   // Default fallback users for zero-downtime offline support
   const DEFAULT_USERS = [
-    { username: 'Admin', password: '123', role: 'admin', name: 'حمزه', roleTitle: 'اونر السيرفر' },
+    { username: 'Admin', password: '123', role: 'admin', name: 'حمزه', roleTitle: 'مدير النظام' },
     { username: 'Salwa', password: '123', role: 'admin', name: 'سلوى', roleTitle: 'مدير تنفيذي' },
     { username: 'Hossam', password: '123', role: 'admin', name: 'حسام', roleTitle: 'مدير انتاج' },
     { username: 'Ahmed Khaled', password: '123', role: 'supervisor', name: 'احمد خالد', roleTitle: 'مشرف انتاج' },
-    { username: 'Mohamed Saeed', password: '123', role: 'worker', name: 'محمد سعيد', roleTitle: 'عمال' },
-    { username: 'Ahmed Abd El Nasser', password: '123', role: 'worker', name: 'احمد عبد الناصر', roleTitle: 'عمال' },
-    { username: 'Mohamed Hamdy', password: '123', role: 'worker', name: 'محمد حمدي', roleTitle: 'عمال' },
-    { username: 'Youseef Khaled', password: '123', role: 'worker', name: 'يوسف خالد', roleTitle: 'عمال' }
+    { username: 'Mohamed Saeed', password: '123', role: 'worker', name: 'محمد سعيد', roleTitle: 'عامل' },
+    { username: 'Ahmed Abd El Nasser', password: '123', role: 'worker', name: 'احمد عبد الناصر', roleTitle: 'عامل' },
+    { username: 'Mohamed Hamdy', password: '123', role: 'worker', name: 'محمد حمدي', roleTitle: 'عامل' },
+    { username: 'Youseef Khaled', password: '123', role: 'worker', name: 'يوسف خالد', roleTitle: 'عامل' }
   ];
 
   const WORKER_NAMES = {
@@ -157,9 +157,9 @@
       thUName: 'Display Name',
       thUPassword: 'Password',
       thUAction: 'Save Action',
-      lblCredWorkers: 'Production Operators (Workers - Password: 123):',
+      lblCredWorkers: 'Production Operators (Worker - Password: 123):',
       lblCredSupervisors: 'Supervisors & Management (Password: 123):',
-      lblCredAdmin: 'Server Owner (Password: 123):',
+      lblCredAdmin: 'System Administrator (Password: 123):',
       optFilterAllWorkers: 'All Operators',
       optFilterAllStatuses: 'All Operational Stages',
       optStatusPending: 'Pending',
@@ -331,9 +331,9 @@
       thUName: 'الاسم المعروض',
       thUPassword: 'كلمة المرور',
       thUAction: 'إجراء الحفظ',
-      lblCredWorkers: 'مشغلو الإنتاج (عمال - Password: 123):',
+      lblCredWorkers: 'مشغلو الإنتاج (عامل - Password: 123):',
       lblCredSupervisors: 'المشرفون والإدارة (Password: 123):',
-      lblCredAdmin: 'اونر السيرفر (Server Owner - Password: 123):',
+      lblCredAdmin: 'مدير النظام (System Admin - Password: 123):',
       optFilterAllWorkers: 'جميع المشغلين',
       optFilterAllStatuses: 'جميع المراحل',
       optStatusPending: 'قيد الانتظار',
@@ -969,28 +969,36 @@
 
   const ROLE_LABELS = {
     en: {
-      'اونر السيرفر': 'Server Owner',
-      'Server Owner': 'Server Owner',
+      'مدير النظام': 'System Administrator',
+      'System Administrator': 'System Administrator',
+      'اونر السيرفر': 'System Administrator',
+      'Server Owner': 'System Administrator',
       'مدير تنفيذي': 'Executive Director',
       'Executive Director': 'Executive Director',
       'مدير انتاج': 'Production Manager',
       'Production Manager': 'Production Manager',
       'مشرف انتاج': 'Production Supervisor',
       'Production Supervisor': 'Production Supervisor',
-      'عمال': 'Workers',
-      'Workers': 'Workers'
+      'عامل': 'Worker',
+      'Worker': 'Worker',
+      'عمال': 'Worker',
+      'Workers': 'Worker'
     },
     ar: {
-      'اونر السيرفر': 'اونر السيرفر',
-      'Server Owner': 'اونر السيرفر',
+      'مدير النظام': 'مدير النظام',
+      'System Administrator': 'مدير النظام',
+      'اونر السيرفر': 'مدير النظام',
+      'Server Owner': 'مدير النظام',
       'مدير تنفيذي': 'مدير تنفيذي',
       'Executive Director': 'مدير تنفيذي',
       'مدير انتاج': 'مدير انتاج',
       'Production Manager': 'مدير انتاج',
       'مشرف انتاج': 'مشرف انتاج',
       'Production Supervisor': 'مشرف انتاج',
-      'عمال': 'عمال',
-      'Workers': 'عمال'
+      'عامل': 'عامل',
+      'Worker': 'عامل',
+      'عمال': 'عامل',
+      'Workers': 'عامل'
     }
   };
 
@@ -998,7 +1006,7 @@
     if (!user) return false;
     const u = String(user.username || '').toLowerCase();
     const title = String(user.roleTitle || '').trim();
-    return u === 'hamza' || u === 'admin' || title === 'اونر السيرفر' || title === 'Server Owner';
+    return u === 'hamza' || u === 'admin' || title === 'مدير النظام' || title === 'System Administrator' || title === 'اونر السيرفر' || title === 'Server Owner';
   }
 
   // Role-based Router
@@ -1146,18 +1154,18 @@
 
       function renderRoleSelector(u) {
         const currentTitle = u.roleTitle || (
-          u.role === 'admin' ? 'اونر السيرفر' :
+          u.role === 'admin' ? 'مدير النظام' :
           u.role === 'supervisor' ? 'مشرف انتاج' :
-          'عمال'
+          'عامل'
         );
 
         const isEn = currentLang === 'en';
         const options = [
-          { value: 'اونر السيرفر', role: 'admin', label: isEn ? 'Server Owner' : 'اونر السيرفر' },
+          { value: 'مدير النظام', role: 'admin', label: isEn ? 'System Administrator' : 'مدير النظام' },
           { value: 'مدير تنفيذي', role: 'admin', label: isEn ? 'Executive Director' : 'مدير تنفيذي' },
           { value: 'مدير انتاج', role: 'admin', label: isEn ? 'Production Manager' : 'مدير انتاج' },
           { value: 'مشرف انتاج', role: 'supervisor', label: isEn ? 'Production Supervisor' : 'مشرف انتاج' },
-          { value: 'عمال', role: 'worker', label: isEn ? 'Workers' : 'عمال' }
+          { value: 'عامل', role: 'worker', label: isEn ? 'Worker' : 'عامل' }
         ];
 
         return `
