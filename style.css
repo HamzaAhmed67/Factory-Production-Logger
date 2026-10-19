@@ -222,3 +222,72 @@ button, input {
   }
 }
 
+/* ========================================================
+   High Contrast & Enhanced Text Visibility Overrides
+   ======================================================== */
+
+/* Light mode text contrast upgrades */
+.text-slate-400 {
+  color: #334155 !important;
+}
+
+.text-slate-500 {
+  color: #1e293b !important;
+}
+
+.text-slate-600 {
+  color: #0f172a !important;
+}
+
+/* Dark mode text contrast upgrades */
+html.dark .text-slate-400,
+html.dark .dark\:text-slate-400 {
+  color: #cbd5e1 !important;
+}
+
+html.dark .text-slate-500,
+html.dark .dark\:text-slate-500 {
+  color: #e2e8f0 !important;
+}
+
+html.dark .text-slate-600,
+html.dark .dark\:text-slate-600 {
+  color: #f8fafc !important;
+}
+
+/* Secondary subtitles, labels, and helper descriptions */
+p.text-xs,
+p.text-\[11px\],
+span.text-\[11px\],
+label.text-\[11px\],
+.text-\[11px\] {
+  font-weight: 600 !important;
+  letter-spacing: 0.01em;
+}
+
+/* High visibility placeholders */
+::placeholder {
+  color: #64748b !important;
+  opacity: 1 !important;
+}
+
+html.dark ::placeholder {
+  color: #94a3b8 !important;
+}
+
+/* Specific KPI section container & card clarity */
+#worker-kpi-grid {
+  margin-top: 0.5rem;
+}
+
+#worker-kpi-grid .glass-card {
+  background: rgba(255, 255, 255, 0.98) !important;
+  border: 1px solid rgba(203, 213, 225, 0.9) !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.07) !important;
+}
+
+html.dark #worker-kpi-grid .glass-card {
+  background: rgba(22, 27, 34, 0.98) !important;
+  border: 1px solid rgba(217, 189, 165, 0.35) !important;
+}
+

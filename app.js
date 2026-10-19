@@ -1779,17 +1779,20 @@
     const overallAvgEl = document.getElementById('kpi-overall-avg');
     if (!grid) return;
 
-    const defaultWorkers = ['worker1', 'worker2', 'worker3', 'worker4'];
-    const validWorkerKeys = new Set(defaultWorkers);
-    const recordWorkers = records
-      .map(r => (r.worker || '').trim().toLowerCase())
-      .filter(w => validWorkerKeys.has(w));
-    const allWorkers = Array.from(new Set([...defaultWorkers, ...recordWorkers]));
-
+    const defaultWorkers = ['Mohamed Saeed', 'Ahmed Abd El Nasser', 'Mohamed Hamdy', 'Youseef Khaled'];
     const factoryDurations = [];
 
-    const cardsHtml = allWorkers.map(wId => {
-      const workerRecords = records.filter(r => (r.worker || '').trim().toLowerCase() === wId.toLowerCase());
+    const cardsHtml = defaultWorkers.map(wId => {
+      const workerRecords = records.filter(r => {
+        const w = (r.worker || '').trim().toLowerCase();
+        const target = wId.toLowerCase();
+        if (w === target) return true;
+        if (target.includes('saeed') && (w === 'worker1' || w.includes('saeed'))) return true;
+        if (target.includes('nasser') && (w === 'worker2' || w.includes('nasser'))) return true;
+        if (target.includes('hamdy') && (w === 'worker3' || w.includes('hamdy'))) return true;
+        if (target.includes('khaled') && (w === 'worker4' || w.includes('khaled'))) return true;
+        return false;
+      });
       const total = workerRecords.length;
       const completed = workerRecords.filter(r => r.status === 'completed');
       const inProgress = workerRecords.filter(r => r.status === 'in_progress');
@@ -1815,49 +1818,49 @@
       const displayName = getWorkerDisplayName(wId, currentLang);
 
       return `
-        <div class="glass-card rounded-lg p-3.5 border border-slate-200 dark:border-slate-800 shadow-sm space-y-2.5">
-          <div class="flex items-center justify-between pb-1.5 border-b border-slate-200 dark:border-slate-800">
-            <div class="font-mono font-bold text-xs text-[#1e2540] dark:text-[#d4aa65]">
-              ${isAr ? 'المشغل:' : 'OPERATOR:'} ${escapeHtml(displayName)}
+        <div class="glass-card rounded-xl p-4 border border-slate-300 dark:border-slate-700 shadow-md space-y-3 bg-white/95 dark:bg-slate-900/90">
+          <div class="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-800">
+            <div class="font-bold text-sm text-[#1e2540] dark:text-[#d4aa65]">
+              <span class="text-xs text-slate-700 dark:text-slate-300 font-semibold">${isAr ? 'المشغل:' : 'OPERATOR:'}</span> ${escapeHtml(displayName)}
             </div>
-            <span class="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded ${
-              completionRate >= 80 ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800' :
-              completionRate >= 50 ? 'bg-amber-50 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-200 dark:border-amber-800' :
-              'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
+            <span class="text-xs font-bold px-2 py-0.5 rounded shadow-sm ${
+              completionRate >= 80 ? 'bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700' :
+              completionRate >= 50 ? 'bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 dark:border-amber-700' :
+              'bg-slate-200 text-slate-900 dark:bg-slate-800 dark:text-slate-100 border border-slate-300 dark:border-slate-600'
             }">
               ${isAr ? `${localizeDigits(completionRate, 'ar')}٪ إنجاز` : `${completionRate}% COMPLETED`}
             </span>
           </div>
 
-          <div class="w-full bg-slate-100 dark:bg-slate-800 rounded h-1.5 overflow-hidden">
-            <div class="bg-emerald-700 h-1.5 rounded transition-all duration-300" style="width: ${completionRate}%"></div>
+          <div class="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-2 overflow-hidden">
+            <div class="bg-emerald-600 h-2 rounded-full transition-all duration-300" style="width: ${completionRate}%"></div>
           </div>
 
-          <div class="grid grid-cols-2 gap-1.5 text-xs font-mono">
-            <div class="p-2 rounded bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
-              <span class="text-[10px] text-slate-500 dark:text-slate-400 block">${isAr ? 'المهام المنجزة' : 'COMPLETED'}</span>
-              <span class="font-bold text-xs text-emerald-700 dark:text-emerald-400">
-                ${isAr ? localizeDigits(completed.length, 'ar') : completed.length} <span class="text-[10px] text-slate-400 font-normal">/ ${isAr ? localizeDigits(total, 'ar') : total}</span>
+          <div class="grid grid-cols-2 gap-2 text-xs font-mono">
+            <div class="p-2.5 rounded-lg bg-slate-100/90 dark:bg-slate-800/90 border border-slate-300 dark:border-slate-700 shadow-sm">
+              <span class="text-[11px] font-bold text-slate-700 dark:text-slate-300 block mb-1">${isAr ? 'المهام المنجزة' : 'COMPLETED'}</span>
+              <span class="font-extrabold text-sm text-emerald-800 dark:text-emerald-400">
+                ${isAr ? localizeDigits(completed.length, 'ar') : completed.length} <span class="text-xs text-slate-600 dark:text-slate-400 font-semibold">/ ${isAr ? localizeDigits(total, 'ar') : total}</span>
               </span>
             </div>
 
-            <div class="p-2 rounded bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
-              <span class="text-[10px] text-slate-500 dark:text-slate-400 block">${isAr ? 'متوسط الوقت' : 'AVG TIME'}</span>
-              <span class="font-bold text-xs text-[#1e2540] dark:text-[#d4aa65]">
+            <div class="p-2.5 rounded-lg bg-slate-100/90 dark:bg-slate-800/90 border border-slate-300 dark:border-slate-700 shadow-sm">
+              <span class="text-[11px] font-bold text-slate-700 dark:text-slate-300 block mb-1">${isAr ? 'متوسط الوقت' : 'AVG TIME'}</span>
+              <span class="font-extrabold text-sm text-[#1e2540] dark:text-[#d4aa65]">
                 ${formatDuration(avgSec)}
               </span>
             </div>
 
-            <div class="p-2 rounded bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
-              <span class="text-[10px] text-slate-500 dark:text-slate-400 block">${isAr ? 'قيد التشغيل' : 'IN PROGRESS'}</span>
-              <span class="font-bold text-xs text-amber-700 dark:text-amber-400">
+            <div class="p-2.5 rounded-lg bg-slate-100/90 dark:bg-slate-800/90 border border-slate-300 dark:border-slate-700 shadow-sm">
+              <span class="text-[11px] font-bold text-slate-700 dark:text-slate-300 block mb-1">${isAr ? 'قيد التشغيل' : 'IN PROGRESS'}</span>
+              <span class="font-extrabold text-sm text-amber-800 dark:text-amber-400">
                 ${isAr ? localizeDigits(inProgress.length, 'ar') : inProgress.length}
               </span>
             </div>
 
-            <div class="p-2 rounded bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
-              <span class="text-[10px] text-slate-500 dark:text-slate-400 block">${isAr ? 'إجمالي الكمية' : 'TOTAL OUTPUT'}</span>
-              <span class="font-bold text-xs text-slate-800 dark:text-slate-200">
+            <div class="p-2.5 rounded-lg bg-slate-100/90 dark:bg-slate-800/90 border border-slate-300 dark:border-slate-700 shadow-sm">
+              <span class="text-[11px] font-bold text-slate-700 dark:text-slate-300 block mb-1">${isAr ? 'إجمالي الكمية' : 'TOTAL OUTPUT'}</span>
+              <span class="font-extrabold text-sm text-slate-900 dark:text-slate-100">
                 ${isAr ? (totalWeight > 0 ? localizeDigits(totalWeight, 'ar') : '٠') : (totalWeight > 0 ? totalWeight.toLocaleString() : '0')}
               </span>
             </div>
