@@ -659,6 +659,7 @@
                     الناصر</option>
                   <option value="Mohamed Hamdy" data-label-ar="محمد حمدي" data-label-en="Mohamed Hamdy">محمد حمدي</option>
                   <option value="Youseef Khaled" data-label-ar="يوسف خالد" data-label-en="Youseef Khaled">يوسف خالد</option>
+                  <option value="Ahmed" data-label-ar="احمد" data-label-en="Ahmed">احمد</option>
                 </select>
               </div>
 
@@ -744,6 +745,7 @@
                   الناصر</option>
                 <option value="Mohamed Hamdy" data-label-ar="محمد حمدي" data-label-en="Mohamed Hamdy">محمد حمدي</option>
                 <option value="Youseef Khaled" data-label-ar="يوسف خالد" data-label-en="Youseef Khaled">يوسف خالد</option>
+                <option value="Ahmed" data-label-ar="احمد" data-label-en="Ahmed">احمد</option>
               </select>
             </div>
 
@@ -895,6 +897,7 @@
                   الناصر</option>
                 <option value="Mohamed Hamdy" data-label-ar="محمد حمدي" data-label-en="Mohamed Hamdy">محمد حمدي</option>
                 <option value="Youseef Khaled" data-label-ar="يوسف خالد" data-label-en="Youseef Khaled">يوسف خالد</option>
+                <option value="Ahmed" data-label-ar="احمد" data-label-en="Ahmed">احمد</option>
               </select>
             </div>
 
@@ -936,6 +939,76 @@
       <!-- TAB 3: USER ACCOUNTS (Admin only) -->
       <div id="subview-settings" class="hidden space-y-5">
 
+        <!-- Add New User / Worker Card -->
+        <div class="glass-card rounded-xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+          <div class="pb-2 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+            <div>
+              <h3 class="text-sm font-extrabold text-[#1e2540] dark:text-[#d4aa65] uppercase tracking-wide" id="add-user-title">
+                إضافة مستخدم أو عامل جديد
+              </h3>
+              <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5" id="add-user-desc">
+                عند تحديد مستوى الصلاحية (عامل)، يمنح المستخدم تلقائياً كافة صلاحيات المشغلين لتسجيل الإنتاج وبصمة السهر.
+              </p>
+            </div>
+            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border border-blue-200 dark:border-blue-800" id="badge-add-user-role">
+              اونر السيرفر
+            </span>
+          </div>
+
+          <form id="add-user-form" class="space-y-3">
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+              <!-- Role / Permission level -->
+              <div class="space-y-1">
+                <label for="new-user-role" class="block text-xs font-bold text-slate-700 dark:text-slate-300" id="lbl-new-u-role">
+                  مستوى الصلاحية *
+                </label>
+                <select id="new-user-role" required
+                  class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold outline-none focus:ring-2 focus:ring-[#1e2540] dark:focus:ring-amber-500">
+                  <option value="عامل" data-role="worker" selected>عامل (Worker)</option>
+                  <option value="مشرف انتاج" data-role="supervisor">مشرف انتاج (Production Supervisor)</option>
+                  <option value="مدير انتاج" data-role="admin">مدير انتاج (Production Manager)</option>
+                  <option value="مدير تنفيذي" data-role="admin">مدير تنفيذي (Executive Director)</option>
+                  <option value="مدير النظام" data-role="admin">مدير النظام (System Administrator)</option>
+                </select>
+              </div>
+
+              <!-- Login Username -->
+              <div class="space-y-1">
+                <label for="new-user-username" class="block text-xs font-bold text-slate-700 dark:text-slate-300" id="lbl-new-u-username">
+                  اسم الدخول (Login ID) *
+                </label>
+                <input type="text" id="new-user-username" placeholder="مثال: Ahmed, worker5..." required
+                  class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-medium outline-none focus:ring-2 focus:ring-[#1e2540] dark:focus:ring-amber-500">
+              </div>
+
+              <!-- Display Name -->
+              <div class="space-y-1">
+                <label for="new-user-name" class="block text-xs font-bold text-slate-700 dark:text-slate-300" id="lbl-new-u-name">
+                  الاسم المعروض (Display Name) *
+                </label>
+                <input type="text" id="new-user-name" placeholder="مثال: احمد, كريم..." required
+                  class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-medium outline-none focus:ring-2 focus:ring-[#1e2540] dark:focus:ring-amber-500">
+              </div>
+
+              <!-- Password -->
+              <div class="space-y-1">
+                <label for="new-user-password" class="block text-xs font-bold text-slate-700 dark:text-slate-300" id="lbl-new-u-password">
+                  كلمة المرور *
+                </label>
+                <input type="text" id="new-user-password" value="123" required
+                  class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-mono font-medium outline-none focus:ring-2 focus:ring-[#1e2540] dark:focus:ring-amber-500">
+              </div>
+            </div>
+
+            <div class="flex items-center justify-end pt-2">
+              <button type="submit" id="btn-submit-new-user"
+                class="px-5 py-2 rounded-lg text-xs font-bold bg-[#1e2540] hover:bg-[#141a2e] dark:bg-amber-600 dark:hover:bg-amber-500 text-white shadow-sm transition active:scale-95 cursor-pointer">
+                <span id="btn-submit-new-user-text">إضافة المستخدم</span>
+              </button>
+            </div>
+          </form>
+        </div>
+
         <div class="glass-card rounded-xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
           <div class="pb-2 border-b border-slate-200 dark:border-slate-800">
             <h3 class="text-sm font-extrabold text-[#1e2540] dark:text-[#d4aa65] uppercase tracking-wide"
@@ -943,7 +1016,7 @@
               إدارة حسابات النظام وبيانات الدخول
             </h3>
             <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5" id="users-mgmt-desc">
-              تعديل أسماء العرض وكلمات المرور للمشغلين (4 مشغلين)، والمشرفين (3 مشرفين)، ومدير النظام.
+              تعديل أسماء العرض وكلمات المرور وتحديد مستوى الصلاحيات لكافة المستخدمين.
             </p>
           </div>
 
@@ -957,7 +1030,7 @@
                   <th class="py-2.5 px-3" id="th-u-username">اسم الدخول</th>
                   <th class="py-2.5 px-3" id="th-u-name">الاسم المعروض</th>
                   <th class="py-2.5 px-3" id="th-u-password">كلمة المرور</th>
-                  <th class="py-2.5 px-3 text-center" id="th-u-action">إجراء الحفظ</th>
+                  <th class="py-2.5 px-3 text-center" id="th-u-action">إجراءات الحساب</th>
                 </tr>
               </thead>
               <tbody id="admin-users-table-body"

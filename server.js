@@ -28,7 +28,8 @@ const DEFAULT_USERS = [
   { username: 'Mohamed Saeed', password: '123', role: 'worker', name: 'محمد سعيد', roleTitle: 'عامل' },
   { username: 'Ahmed Abd El Nasser', password: '123', role: 'worker', name: 'احمد عبد الناصر', roleTitle: 'عامل' },
   { username: 'Mohamed Hamdy', password: '123', role: 'worker', name: 'محمد حمدي', roleTitle: 'عامل' },
-  { username: 'Youseef Khaled', password: '123', role: 'worker', name: 'يوسف خالد', roleTitle: 'عامل' }
+  { username: 'Youseef Khaled', password: '123', role: 'worker', name: 'يوسف خالد', roleTitle: 'عامل' },
+  { username: 'Ahmed', password: '123', role: 'worker', name: 'احمد', roleTitle: 'عامل' }
 ];
 
 function ensureDataFile() {
@@ -439,7 +440,9 @@ app.post('/api/auth/login', async (req, res) => {
       });
       const user = allUsers.find(u => {
         const dbU = String(u.username || '').trim().toLowerCase();
-        return dbU === cleanUser || dbU.replace(/[\s_-]+/g, '') === userNoSpace;
+        const dbN = String(u.name || '').trim().toLowerCase();
+        return dbU === cleanUser || dbU.replace(/[\s_-]+/g, '') === userNoSpace ||
+               (cleanUser === 'worker5' && (dbU === 'ahmed' || dbN === 'احمد'));
       });
       if (user) {
         return res.json({
@@ -457,8 +460,10 @@ app.post('/api/auth/login', async (req, res) => {
     const data = readLocalData();
     const user = (data.users || []).find(u => {
       const dbU = String(u.username || '').trim().toLowerCase();
+      const dbN = String(u.name || '').trim().toLowerCase();
       const passOk = (u.password === cleanPass || u.password === password);
-      const userOk = (dbU === cleanUser || dbU.replace(/[\s_-]+/g, '') === userNoSpace);
+      const userOk = (dbU === cleanUser || dbU.replace(/[\s_-]+/g, '') === userNoSpace ||
+                     (cleanUser === 'worker5' && (dbU === 'ahmed' || dbN === 'احمد')));
       return userOk && passOk;
     });
 
@@ -501,6 +506,100 @@ app.get('/api/users', async (req, res) => {
   } catch (err) {
     const data = readLocalData();
     res.json(data.users || DEFAULT_USERS);
+  }
+});
+
+// Route: Add new user (Admin Settings)
+app.post('/api/users', async (req, res) => {
+  try {
+    let { username, password, name, role, roleTitle } = req.body;
+    if (!username || !username.trim()) {
+      return res.status(400).json({ error: 'اسم المستخدم مطلوب (Username is required)' });
+    }
+    const cleanUser = username.trim();
+    const cleanUserLower = cleanUser.toLowerCase();
+
+    if (!roleTitle) {
+      roleTitle = role === 'admin' ? 'مدير النظام' : (role === 'supervisor' ? 'مشرف انتاج' : 'عامل');
+    }
+    if (!role) {
+      role = (roleTitle === 'عامل' || roleTitle === 'Worker' || roleTitle === 'عمال') ? 'worker' :
+             (roleTitle === 'مشرف انتاج' || roleTitle === 'Production Supervisor') ? 'supervisor' : 'admin';
+    }
+    if (!password || !password.trim()) {
+      password = '123';
+    }
+    if (!name || !name.trim()) {
+      name = cleanUser;
+    }
+
+    if (isMongo()) {
+      const existing = await User.findOne({ username: new RegExp(`^${cleanUserLower}$`, 'i') });
+      if (existing) {
+        return res.status(400).json({ error: 'اسم المستخدم مسجل بالفعل (Username already exists)' });
+      }
+      const created = await User.create({
+        username: cleanUser,
+        password: password.trim(),
+        name: name.trim(),
+        role,
+        roleTitle,
+        updatedAt: new Date()
+      });
+      return res.status(201).json({ success: true, user: created });
+    }
+
+    const data = readLocalData();
+    data.users = data.users || JSON.parse(JSON.stringify(DEFAULT_USERS));
+    if (data.users.some(u => u.username.toLowerCase() === cleanUserLower)) {
+      return res.status(400).json({ error: 'اسم المستخدم مسجل بالفعل (Username already exists)' });
+    }
+
+    const newUser = {
+      username: cleanUser,
+      password: password.trim(),
+      role,
+      roleTitle,
+      name: name.trim(),
+      updatedAt: new Date().toISOString()
+    };
+    data.users.push(newUser);
+    writeLocalData(data);
+    res.status(201).json({ success: true, user: newUser });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Route: Delete user (Admin Settings)
+app.delete('/api/users/:username', async (req, res) => {
+  try {
+    const { username } = req.params;
+    const cleanUser = username.trim().toLowerCase();
+
+    if (cleanUser === 'admin' || cleanUser === 'hamza') {
+      return res.status(403).json({ error: 'لا يمكن حذف حساب مدير النظام أو اونر السيرفر' });
+    }
+
+    if (isMongo()) {
+      const delRes = await User.deleteOne({ username: new RegExp(`^${cleanUser}$`, 'i') });
+      if (delRes.deletedCount > 0) {
+        return res.json({ success: true, message: 'تم حذف المستخدم بنجاح' });
+      }
+    }
+
+    const data = readLocalData();
+    data.users = data.users || JSON.parse(JSON.stringify(DEFAULT_USERS));
+    const initLen = data.users.length;
+    data.users = data.users.filter(u => u.username.toLowerCase() !== cleanUser);
+    if (data.users.length < initLen) {
+      writeLocalData(data);
+      return res.json({ success: true, message: 'تم حذف المستخدم بنجاح' });
+    }
+
+    res.status(404).json({ error: 'المستخدم غير موجود' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 

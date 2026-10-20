@@ -22,7 +22,8 @@
     { username: 'Mohamed Saeed', password: '123', role: 'worker', name: 'محمد سعيد', roleTitle: 'عامل' },
     { username: 'Ahmed Abd El Nasser', password: '123', role: 'worker', name: 'احمد عبد الناصر', roleTitle: 'عامل' },
     { username: 'Mohamed Hamdy', password: '123', role: 'worker', name: 'محمد حمدي', roleTitle: 'عامل' },
-    { username: 'Youseef Khaled', password: '123', role: 'worker', name: 'يوسف خالد', roleTitle: 'عامل' }
+    { username: 'Youseef Khaled', password: '123', role: 'worker', name: 'يوسف خالد', roleTitle: 'عامل' },
+    { username: 'Ahmed', password: '123', role: 'worker', name: 'احمد', roleTitle: 'عامل' }
   ];
 
   const WORKER_NAMES = {
@@ -30,6 +31,8 @@
     worker2: { ar: 'احمد عبد الناصر', en: 'Ahmed Abdel Nasser' },
     worker3: { ar: 'محمد حمدي', en: 'Mohamed Hamdy' },
     worker4: { ar: 'يوسف خالد', en: 'Youssef Khaled' },
+    worker5: { ar: 'احمد', en: 'Ahmed' },
+    'ahmed': { ar: 'احمد', en: 'Ahmed' },
     'mohamed saeed': { ar: 'محمد سعيد', en: 'Mohamed Saeed' },
     'ahmed abd el nasser': { ar: 'احمد عبد الناصر', en: 'Ahmed Abdel Nasser' },
     'mohamed hamdy': { ar: 'محمد حمدي', en: 'Mohamed Hamdy' },
@@ -59,8 +62,8 @@
       const stored = localStorage.getItem('ug_production_users');
       if (stored) {
         const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed)) {
-          return parsed.filter(u => u.username !== 'worker5');
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
         }
       }
     } catch (e) {
@@ -1118,6 +1121,60 @@
     }
   }
 
+  // Dynamic Worker Dropdowns Updater
+  function refreshWorkerDropdowns(usersList) {
+    const users = (usersList && Array.isArray(usersList)) ? usersList : getLocalUsers();
+    const workers = users.filter(u => u.role === 'worker');
+    if (workers.length === 0) return;
+
+    const isAr = currentLang === 'ar';
+
+    // 1. Assign Worker Select in Supervisor view
+    const assignSelect = document.getElementById('assign-worker-select');
+    if (assignSelect) {
+      const currentVal = assignSelect.value;
+      assignSelect.innerHTML = workers.map(w => {
+        const arName = w.name || w.username;
+        const enName = getWorkerDisplayName(w.username, 'en') || w.username;
+        const label = isAr ? arName : enName;
+        return `<option value="${escapeHtml(w.username)}" data-label-ar="${escapeHtml(arName)}" data-label-en="${escapeHtml(enName)}">${escapeHtml(label)}</option>`;
+      }).join('');
+      if (currentVal && workers.some(w => w.username === currentVal)) {
+        assignSelect.value = currentVal;
+      }
+    }
+
+    // 2. Production Filter Worker Select
+    const filterSelect = document.getElementById('admin-filter-worker');
+    if (filterSelect) {
+      const currentVal = filterSelect.value;
+      const allLabel = isAr ? 'جميع المشغلين' : 'All Operators';
+      filterSelect.innerHTML = `<option value="" id="opt-filter-all-workers">${allLabel}</option>` +
+        workers.map(w => {
+          const arName = w.name || w.username;
+          const enName = getWorkerDisplayName(w.username, 'en') || w.username;
+          const label = isAr ? arName : enName;
+          return `<option value="${escapeHtml(w.username)}" data-label-ar="${escapeHtml(arName)}" data-label-en="${escapeHtml(enName)}">${escapeHtml(label)}</option>`;
+        }).join('');
+      if (currentVal) filterSelect.value = currentVal;
+    }
+
+    // 3. Overtime Filter Worker Select
+    const otFilterSelect = document.getElementById('admin-filter-ot-worker');
+    if (otFilterSelect) {
+      const currentVal = otFilterSelect.value;
+      const allLabel = isAr ? 'جميع العمال' : 'All Workers';
+      otFilterSelect.innerHTML = `<option value="" id="opt-ot-filter-all-workers">${allLabel}</option>` +
+        workers.map(w => {
+          const arName = w.name || w.username;
+          const enName = getWorkerDisplayName(w.username, 'en') || w.username;
+          const label = isAr ? arName : enName;
+          return `<option value="${escapeHtml(w.username)}" data-label-ar="${escapeHtml(arName)}" data-label-en="${escapeHtml(enName)}">${escapeHtml(label)}</option>`;
+        }).join('');
+      if (currentVal) otFilterSelect.value = currentVal;
+    }
+  }
+
   // Load Admin Users Credentials Table
   async function loadAdminUsersTable() {
     const tbody = document.getElementById('admin-users-table-body');
@@ -1145,6 +1202,14 @@
         tbody.innerHTML = `<tr><td colspan="5" class="py-4 text-center text-xs text-slate-500">No user accounts found</td></tr>`;
         return;
       }
+
+      // Sync local cache
+      try {
+        localStorage.setItem('ug_production_users', JSON.stringify(users));
+      } catch (_) {}
+
+      // Refresh worker dropdowns across system
+      refreshWorkerDropdowns(users);
 
       const isAr = currentLang === 'ar';
 
@@ -1176,9 +1241,9 @@
         `;
       }
 
-      const validUsers = users.filter(u => u.username !== 'worker5');
-
-      tbody.innerHTML = validUsers.map(u => `
+      tbody.innerHTML = users.map(u => {
+        const isOwnerAccount = isServerOwner(u);
+        return `
         <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition">
           <td class="py-2.5 px-3">${renderRoleSelector(u)}</td>
           <td class="py-2.5 px-3 font-mono font-bold text-[#1e2540] dark:text-[#d4aa65]">${escapeHtml(u.username)}</td>
@@ -1191,16 +1256,107 @@
               data-username="${escapeHtml(u.username)}" value="${escapeHtml(u.password || '')}" placeholder="Password">
           </td>
           <td class="py-2.5 px-3 text-center">
-            <button type="button" class="btn-save-user px-3 py-1 rounded text-xs font-bold bg-emerald-700 hover:bg-emerald-800 text-white shadow-sm transition active:scale-95 cursor-pointer"
-              data-username="${escapeHtml(u.username)}">
-              ${currentLang === 'ar' ? 'حفظ' : 'Save'}
-            </button>
+            <div class="inline-flex items-center gap-1.5 justify-center">
+              <button type="button" class="btn-save-user px-3 py-1 rounded text-xs font-bold bg-emerald-700 hover:bg-emerald-800 text-white shadow-sm transition active:scale-95 cursor-pointer"
+                data-username="${escapeHtml(u.username)}">
+                ${currentLang === 'ar' ? 'حفظ' : 'Save'}
+              </button>
+              ${!isOwnerAccount ? `
+              <button type="button" class="btn-delete-user px-2.5 py-1 rounded text-xs font-bold bg-rose-700 hover:bg-rose-800 text-white shadow-sm transition active:scale-95 cursor-pointer"
+                data-username="${escapeHtml(u.username)}" title="${currentLang === 'ar' ? 'حذف المستخدم' : 'Delete user'}">
+                ${currentLang === 'ar' ? 'حذف' : 'Delete'}
+              </button>
+              ` : ''}
+            </div>
           </td>
         </tr>
-      `).join('');
+      `}).join('');
     } catch (err) {
       console.error('loadAdminUsersTable error:', err);
       tbody.innerHTML = `<tr><td colspan="5" class="py-4 text-center text-xs text-rose-600 font-bold">Failed to load accounts</td></tr>`;
+    }
+  }
+
+  // Add New User (Worker, Supervisor, Admin)
+  async function handleAddUserSubmit(e) {
+    e.preventDefault();
+    if (!isServerOwner(currentUser)) {
+      showToast(currentLang === 'ar' ? 'صلاحية إضافة المستخدمين مقتصرة على اونر السيرفر (حمزه) فقط' : 'Only Server Owner can add users', true);
+      return;
+    }
+
+    const roleSelect = document.getElementById('new-user-role');
+    const userInput = document.getElementById('new-user-username');
+    const nameInput = document.getElementById('new-user-name');
+    const passInput = document.getElementById('new-user-password');
+
+    const roleTitle = roleSelect ? roleSelect.value : 'عامل';
+    const selectedOpt = roleSelect ? roleSelect.selectedOptions[0] : null;
+    const role = selectedOpt ? selectedOpt.getAttribute('data-role') : 'worker';
+    const username = userInput ? userInput.value.trim() : '';
+    const name = nameInput ? nameInput.value.trim() : '';
+    const password = passInput ? passInput.value.trim() : '123';
+
+    if (!username) {
+      showToast(currentLang === 'ar' ? 'اسم الدخول مطلوب' : 'Username is required', true);
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/users`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, name: name || username, password: password || '123', role, roleTitle })
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        showToast(currentLang === 'ar' ? `تمت إضافة "${name || username}" بنجاح` : `User "${name || username}" added successfully`);
+        if (userInput) userInput.value = '';
+        if (nameInput) nameInput.value = '';
+        if (passInput) passInput.value = '123';
+        await loadAdminUsersTable();
+      } else {
+        showToast(data.error || (currentLang === 'ar' ? 'تعذر إضافة المستخدم' : 'Failed to add user'), true);
+      }
+    } catch (err) {
+      console.error('handleAddUserSubmit error:', err);
+      showToast('Network error adding user', true);
+    }
+  }
+
+  // Delete User Account
+  async function handleDeleteUser(username) {
+    if (!isServerOwner(currentUser)) {
+      showToast(currentLang === 'ar' ? 'صلاحية الحذف مقتصرة على اونر السيرفر (حمزه) فقط' : 'Only Server Owner can delete users', true);
+      return;
+    }
+
+    const clean = String(username || '').trim().toLowerCase();
+    if (clean === 'admin' || clean === 'hamza') {
+      showToast(currentLang === 'ar' ? 'لا يمكن حذف حساب اونر السيرفر' : 'Cannot delete Server Owner account', true);
+      return;
+    }
+
+    const confirmMsg = currentLang === 'ar' 
+      ? `هل أنت متأكد من رغبتك في حذف المستخدم "${username}"؟` 
+      : `Are you sure you want to delete user "${username}"?`;
+    if (!confirm(confirmMsg)) return;
+
+    try {
+      const res = await fetch(`${API_BASE}/users/${encodeURIComponent(username)}`, {
+        method: 'DELETE'
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        showToast(currentLang === 'ar' ? 'تم حذف المستخدم بنجاح' : 'User deleted successfully');
+        await loadAdminUsersTable();
+      } else {
+        showToast(data.error || (currentLang === 'ar' ? 'فشل حذف المستخدم' : 'Failed to delete user'), true);
+      }
+    } catch (err) {
+      console.error('handleDeleteUser error:', err);
+      showToast('Network error deleting user', true);
     }
   }
 
@@ -1244,6 +1400,7 @@
           localUsers[idx].role = role;
           localUsers[idx].roleTitle = roleTitle;
           localStorage.setItem('ug_production_users', JSON.stringify(localUsers));
+          refreshWorkerDropdowns(localUsers);
         }
 
         if (currentUser && currentUser.username.toLowerCase() === username.toLowerCase()) {
@@ -1779,7 +1936,10 @@
     const overallAvgEl = document.getElementById('kpi-overall-avg');
     if (!grid) return;
 
-    const defaultWorkers = ['Mohamed Saeed', 'Ahmed Abd El Nasser', 'Mohamed Hamdy', 'Youseef Khaled'];
+    const allWorkerAccounts = getLocalUsers().filter(u => u.role === 'worker');
+    const defaultWorkers = allWorkerAccounts.length > 0 
+      ? allWorkerAccounts.map(u => u.username)
+      : ['Mohamed Saeed', 'Ahmed Abd El Nasser', 'Mohamed Hamdy', 'Youseef Khaled', 'Ahmed'];
     const factoryDurations = [];
 
     const cardsHtml = defaultWorkers.map(wId => {
@@ -1791,6 +1951,7 @@
         if (target.includes('nasser') && (w === 'worker2' || w.includes('nasser'))) return true;
         if (target.includes('hamdy') && (w === 'worker3' || w.includes('hamdy'))) return true;
         if (target.includes('khaled') && (w === 'worker4' || w.includes('khaled'))) return true;
+        if (target === 'ahmed' && (w === 'worker5' || w === 'ahmed' || w === 'احمد')) return true;
         return false;
       });
       const total = workerRecords.length;
@@ -2832,7 +2993,7 @@
     const tabSettings = document.getElementById('tab-btn-settings');
     if (tabSettings) tabSettings.addEventListener('click', () => switchAdminTab('settings'));
 
-    // Admin Users Table Save Delegation
+    // Admin Users Table Save & Delete Delegation
     const adminUsersTbody = document.getElementById('admin-users-table-body');
     if (adminUsersTbody) {
       adminUsersTbody.addEventListener('click', (e) => {
@@ -2840,9 +3001,21 @@
         if (saveBtn) {
           const username = saveBtn.getAttribute('data-username');
           saveUserCredentials(username);
+          return;
+        }
+
+        const delBtn = e.target.closest('.btn-delete-user');
+        if (delBtn) {
+          const username = delBtn.getAttribute('data-username');
+          handleDeleteUser(username);
+          return;
         }
       });
     }
+
+    // Add New User Form Submit
+    const addUserForm = document.getElementById('add-user-form');
+    if (addUserForm) addUserForm.addEventListener('submit', handleAddUserSubmit);
 
     // Supervisor Filters
     const fWorker = document.getElementById('admin-filter-worker');
@@ -2953,7 +3126,16 @@
     applyTheme(currentTheme);
     applyLanguage(currentLang);
     startClock();
+    refreshWorkerDropdowns();
     setupEvents();
+
+    // Async pre-fetch users for cache & dropdowns
+    fetch(`${API_BASE}/users`).then(r => r.json()).then(users => {
+      if (Array.isArray(users) && users.length > 0) {
+        localStorage.setItem('ug_production_users', JSON.stringify(users));
+        refreshWorkerDropdowns(users);
+      }
+    }).catch(() => {});
 
     if (currentUser) {
       routeUser(currentUser);

@@ -364,6 +364,55 @@ test('API Integration Tests (Stdlib)', async (t) => {
     const delRes = await request(server, `/api/overtime/${created.id}`, { method: 'DELETE' });
     assert.equal(delRes.status, 200);
   });
+
+  await t.test('Worker 5 (Ahmed) authentication and dynamic user creation with worker role abilities', async () => {
+    // 1. Ahmed login (worker 5)
+    const ahmedLogin = await request(server, '/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: 'Ahmed', password: '123' })
+    });
+    assert.equal(ahmedLogin.status, 200);
+    const ahmedData = await ahmedLogin.json();
+    assert.equal(ahmedData.user.username, 'Ahmed');
+    assert.equal(ahmedData.user.role, 'worker');
+    assert.equal(ahmedData.user.roleTitle, 'عامل');
+
+    // 2. Add new worker via POST /api/users
+    const testUsername = 'WorkerAutoTest';
+    const createRes = await request(server, '/api/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: testUsername,
+        name: 'عامل اختبار تجريبي',
+        password: '123',
+        roleTitle: 'عامل'
+      })
+    });
+    assert.equal(createRes.status, 201);
+    const createData = await createRes.json();
+    assert.equal(createData.user.username, testUsername);
+    assert.equal(createData.user.role, 'worker');
+    assert.equal(createData.user.roleTitle, 'عامل');
+
+    // 3. Authenticate with newly created worker
+    const newWorkerLogin = await request(server, '/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: testUsername, password: '123' })
+    });
+    assert.equal(newWorkerLogin.status, 200);
+    const newWorkerData = await newWorkerLogin.json();
+    assert.equal(newWorkerData.user.role, 'worker');
+    assert.equal(newWorkerData.user.name, 'عامل اختبار تجريبي');
+
+    // 4. Delete the test user via DELETE /api/users/:username
+    const delUserRes = await request(server, `/api/users/${testUsername}`, {
+      method: 'DELETE'
+    });
+    assert.equal(delUserRes.status, 200);
+  });
 });
 
 
