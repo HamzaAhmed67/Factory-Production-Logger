@@ -76,6 +76,9 @@
   const STORAGE_KEY = 'factory_prod_logs_v3';
   const OVERTIME_STORAGE_KEY = 'factory_overtime_logs_v1';
   const USER_SESSION_KEY = 'factory_user_session_v5';
+  const REMEMBER_ME_KEY = 'factory_remember_me_v1';
+  const REMEMBERED_USER_KEY = 'factory_remembered_username_v1';
+  const OFFLINE_QUEUE_KEY = 'factory_offline_sync_queue_v1';
   const LANG_KEY = 'factory_prod_lang_v1';
   const THEME_KEY = 'factory_prod_theme_v1';
 
@@ -108,6 +111,9 @@
       portalAdminDesc: 'Manage, filter, search, and export all production records.',
       portalAdminAction: 'Supervisor Sign In →',
       btnBackPortals: 'Back to Portals',
+      btnInstallApp: 'Install App',
+      offlineBadge: 'Offline Mode',
+      syncingBadge: 'Syncing',
 
       loginHeading: 'Enterprise Production System',
       loginSubheading: 'Enter credentials for system authentication and authorization',
@@ -115,6 +121,9 @@
       placeholderLoginUser: 'Enter username...',
       lblLoginPass: 'Password *',
       placeholderLoginPass: 'Enter password...',
+      lblRememberMe: 'Remember me',
+      titleShowPassword: 'Show password',
+      titleHidePassword: 'Hide password',
       btnLoginSubmit: 'Sign In',
       loginError: 'Invalid username or password.',
       lblQuickCreds: 'Default Accounts (Click to auto-fill):',
@@ -282,6 +291,9 @@
       portalAdminDesc: 'إدارة، تصفية، بحث، وتصدير جميع سجلات الإنتاج.',
       portalAdminAction: 'تسجيل دخول المشرفين ←',
       btnBackPortals: 'العودة للبوابات',
+      btnInstallApp: 'تثبيت التطبيق',
+      offlineBadge: 'وضع عدم الاتصال',
+      syncingBadge: 'قيد المزامنة',
 
       loginHeading: 'نظام إدارة عمليات الإنتاج',
       loginSubheading: 'أدخل بيانات الاعتماد للمصادقة وتحديد مستوى الصلاحيات',
@@ -289,6 +301,9 @@
       placeholderLoginUser: 'اسم المستخدم...',
       lblLoginPass: 'كلمة المرور *',
       placeholderLoginPass: 'كلمة المرور...',
+      lblRememberMe: 'تذكرني',
+      titleShowPassword: 'إظهار كلمة المرور',
+      titleHidePassword: 'إخفاء كلمة المرور',
       btnLoginSubmit: 'تسجيل الدخول',
       loginError: 'اسم المستخدم أو كلمة المرور غير صحيحة.',
       lblQuickCreds: 'حسابات النظام الافتراضية (انقر للتعبئة السريعة):',
@@ -684,6 +699,8 @@
     setText('portal-admin-desc', t.portalAdminDesc);
     setText('portal-admin-action', t.portalAdminAction);
     setText('btn-back-portals-text', t.btnBackPortals);
+    setText('btn-install-app-text', t.btnInstallApp);
+    updateNetworkStatus();
 
     // Login View
     setText('login-heading', t.loginHeading);
@@ -692,6 +709,13 @@
     setPlaceholder('login-username', t.placeholderLoginUser);
     setText('lbl-login-pass', t.lblLoginPass);
     setPlaceholder('login-password', t.placeholderLoginPass);
+    setText('lbl-remember-me', t.lblRememberMe);
+    const btnTogglePass = document.getElementById('btn-toggle-password');
+    const inputPass = document.getElementById('login-password');
+    if (btnTogglePass && inputPass) {
+      const isVisible = inputPass.getAttribute('type') === 'text';
+      btnTogglePass.setAttribute('title', isVisible ? t.titleHidePassword : t.titleShowPassword);
+    }
     setText('btn-login-text', t.btnLoginSubmit);
     setText('lbl-quick-creds', t.lblQuickCreds);
 
@@ -875,6 +899,11 @@
         }
       }
     }
+
+    const waBtn = document.getElementById('btn-whatsapp-group');
+    if (waBtn) {
+      waBtn.setAttribute('title', lang === 'ar' ? 'انضم إلى مجموعة الواتساب' : 'Join WhatsApp Group');
+    }
   }
 
   // Live Clock
@@ -965,6 +994,17 @@
       if (grpWorkers) grpWorkers.classList.remove('hidden');
       if (grpSupervisors) grpSupervisors.classList.remove('hidden');
       if (grpAdmin) grpAdmin.classList.remove('hidden');
+    }
+
+    const rememberMeBox = document.getElementById('login-remember-me');
+    const isRemembered = localStorage.getItem(REMEMBER_ME_KEY) === 'true';
+    if (rememberMeBox) {
+      rememberMeBox.checked = isRemembered;
+    }
+    const rememberedUsername = localStorage.getItem(REMEMBERED_USER_KEY);
+    const loginUserInput = document.getElementById('login-username');
+    if (isRemembered && rememberedUsername && loginUserInput && !loginUserInput.value) {
+      loginUserInput.value = rememberedUsername;
     }
   }
 
@@ -1110,6 +1150,9 @@
     if (subProd) subProd.classList.toggle('hidden', tabName !== 'production');
     if (subOt) subOt.classList.toggle('hidden', tabName !== 'overtime');
     if (subSettings) subSettings.classList.toggle('hidden', !isOwner || tabName !== 'settings');
+
+    const prodExports = document.getElementById('production-exports-group');
+    if (prodExports) prodExports.classList.toggle('hidden', tabName !== 'production');
 
     if (tabName === 'settings') {
       loadAdminUsersTable();
@@ -1408,6 +1451,9 @@
           currentUser.role = role || currentUser.role;
           currentUser.roleTitle = roleTitle || currentUser.roleTitle;
           sessionStorage.setItem(USER_SESSION_KEY, JSON.stringify(currentUser));
+          if (localStorage.getItem(USER_SESSION_KEY)) {
+            localStorage.setItem(USER_SESSION_KEY, JSON.stringify(currentUser));
+          }
           const userDisplay = document.getElementById('dash-username-display');
           if (userDisplay) userDisplay.textContent = currentUser.name;
           const roleBadge = document.getElementById('dash-role-badge');
@@ -1435,7 +1481,7 @@
       const savedRecords = localStorage.getItem(STORAGE_KEY);
       records = savedRecords ? JSON.parse(savedRecords) : [];
 
-      const savedUser = sessionStorage.getItem(USER_SESSION_KEY);
+      const savedUser = sessionStorage.getItem(USER_SESSION_KEY) || localStorage.getItem(USER_SESSION_KEY);
       currentUser = savedUser ? JSON.parse(savedUser) : null;
 
       await fetchServerRecords();
@@ -1558,9 +1604,12 @@
         newRecord.id = saved.id || newRecord.id;
         saveRecordsLocal();
         renderWorkerTasks();
+      } else {
+        addToOfflineQueue({ type: 'create_log', payload: newRecord });
       }
     } catch (err) {
-      console.warn('Network error pushing log to backend:', err);
+      console.warn('Network error pushing log to backend, queued offline:', err);
+      addToOfflineQueue({ type: 'create_log', payload: newRecord });
     }
   }
 
@@ -1631,9 +1680,12 @@
         newRecord.id = saved.id || newRecord.id;
         saveRecordsLocal();
         renderAdminDashboard();
+      } else {
+        addToOfflineQueue({ type: 'create_log', payload: newRecord });
       }
     } catch (err) {
-      console.warn('Network error assigning job:', err);
+      console.warn('Network error assigning job, queued offline:', err);
+      addToOfflineQueue({ type: 'create_log', payload: newRecord });
     }
   }
 
@@ -1654,13 +1706,18 @@
 
     try {
       const targetId = item.id || item._id;
-      await fetch(`${API_BASE}/logs/${targetId}/status`, {
+      const res = await fetch(`${API_BASE}/logs/${targetId}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'in_progress', timestamp })
       });
+      if (!res.ok) {
+        addToOfflineQueue({ type: 'status_update', id: targetId, status: 'in_progress', timestamp });
+      }
     } catch (err) {
-      console.warn('Backend update failed:', err);
+      console.warn('Backend update failed, queued offline:', err);
+      const targetId = item.id || item._id;
+      addToOfflineQueue({ type: 'status_update', id: targetId, status: 'in_progress', timestamp });
     }
   }
 
@@ -1680,13 +1737,18 @@
 
     try {
       const targetId = item.id || item._id;
-      await fetch(`${API_BASE}/logs/${targetId}/status`, {
+      const res = await fetch(`${API_BASE}/logs/${targetId}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'completed', timestamp })
       });
+      if (!res.ok) {
+        addToOfflineQueue({ type: 'status_update', id: targetId, status: 'completed', timestamp });
+      }
     } catch (err) {
-      console.warn('Backend update failed:', err);
+      console.warn('Backend update failed, queued offline:', err);
+      const targetId = item.id || item._id;
+      addToOfflineQueue({ type: 'status_update', id: targetId, status: 'completed', timestamp });
     }
   }
 
@@ -2168,9 +2230,13 @@
     renderAdminDashboard();
 
     try {
-      await fetch(`${API_BASE}/logs/${id}`, { method: 'DELETE' });
+      const res = await fetch(`${API_BASE}/logs/${id}`, { method: 'DELETE' });
+      if (!res.ok) {
+        addToOfflineQueue({ type: 'delete_log', id });
+      }
     } catch (err) {
-      console.warn('Could not delete from backend:', err);
+      console.warn('Could not delete from backend, queued offline:', err);
+      addToOfflineQueue({ type: 'delete_log', id });
     }
   }
 
@@ -2401,7 +2467,7 @@
 
         <div class="signature">
           <div>${isRtl ? 'توقيع المشرف المسؤول: ____________________' : 'Supervisor Signature: ____________________'}</div>
-          <div>${isRtl ? 'توقيع مراقبة الجودة: ____________________' : 'Quality Assurance Signature: ____________________'}</div>
+          <div>${isRtl ? 'توقيع إدارة المصنع: ____________________' : 'Plant Management Signature: ____________________'}</div>
         </div>
 
         <script>
@@ -2462,9 +2528,24 @@
     if (authenticatedUser) {
       if (errorBox) errorBox.classList.add('hidden');
       sessionStorage.setItem(USER_SESSION_KEY, JSON.stringify(authenticatedUser));
+
+      const rememberMeBox = document.getElementById('login-remember-me');
+      const isRemember = !!(rememberMeBox && rememberMeBox.checked);
+      if (isRemember) {
+        localStorage.setItem(USER_SESSION_KEY, JSON.stringify(authenticatedUser));
+        localStorage.setItem(REMEMBER_ME_KEY, 'true');
+        localStorage.setItem(REMEMBERED_USER_KEY, authenticatedUser.username);
+      } else {
+        localStorage.removeItem(USER_SESSION_KEY);
+        localStorage.removeItem(REMEMBER_ME_KEY);
+        localStorage.removeItem(REMEMBERED_USER_KEY);
+      }
+
       showToast(I18N[currentLang].toastLoggedIn(authenticatedUser.name || authenticatedUser.username));
       routeUser(authenticatedUser);
-      userInput.value = '';
+      if (!isRemember) {
+        userInput.value = '';
+      }
       passInput.value = '';
     } else {
       if (errorBox) {
@@ -2478,6 +2559,7 @@
   function handleLogout() {
     currentUser = null;
     sessionStorage.removeItem(USER_SESSION_KEY);
+    localStorage.removeItem(USER_SESSION_KEY);
     showToast(I18N[currentLang].toastLoggedOut);
     routeUser(null);
   }
@@ -2552,6 +2634,7 @@
         ...payload,
         createdAt: new Date().toISOString()
       };
+      addToOfflineQueue({ type: 'create_overtime', payload });
     }
 
     overtimeRecords.unshift(saved);
@@ -2928,6 +3011,22 @@
     const loginForm = document.getElementById('unified-login-form');
     if (loginForm) loginForm.addEventListener('submit', handleUnifiedLogin);
 
+    // Toggle Password Visibility
+    const btnTogglePassword = document.getElementById('btn-toggle-password');
+    const inputLoginPassword = document.getElementById('login-password');
+    const iconEyeOpen = document.getElementById('icon-eye-open');
+    const iconEyeClosed = document.getElementById('icon-eye-closed');
+    if (btnTogglePassword && inputLoginPassword) {
+      btnTogglePassword.addEventListener('click', () => {
+        const isPassword = inputLoginPassword.getAttribute('type') === 'password';
+        inputLoginPassword.setAttribute('type', isPassword ? 'text' : 'password');
+        if (iconEyeOpen) iconEyeOpen.classList.toggle('hidden', isPassword);
+        if (iconEyeClosed) iconEyeClosed.classList.toggle('hidden', !isPassword);
+        const t = I18N[currentLang] || I18N.ar;
+        btnTogglePassword.setAttribute('title', isPassword ? t.titleHidePassword : t.titleShowPassword);
+      });
+    }
+
     // Quick Credential Chips Click Delegation
     document.querySelectorAll('.quick-cred-chip').forEach(chip => {
       chip.addEventListener('click', () => {
@@ -3119,6 +3218,156 @@
     if (btnOtPrint) btnOtPrint.addEventListener('click', printOvertimeReport);
   }
 
+  // ==============================================================
+  // PWA & ZERO-DROP OFFLINE SYNC
+  // ==============================================================
+  let deferredInstallPrompt = null;
+
+  function initPWA() {
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch(err => {
+          console.warn('SW registration failed:', err);
+        });
+      });
+    }
+
+    const installBtn = document.getElementById('btn-install-app');
+    window.addEventListener('beforeinstallprompt', e => {
+      e.preventDefault();
+      deferredInstallPrompt = e;
+      if (installBtn) installBtn.classList.remove('hidden');
+    });
+
+    if (installBtn) {
+      installBtn.addEventListener('click', async () => {
+        if (!deferredInstallPrompt) return;
+        deferredInstallPrompt.prompt();
+        const choice = await deferredInstallPrompt.userChoice;
+        if (choice && choice.outcome === 'accepted') {
+          installBtn.classList.add('hidden');
+        }
+        deferredInstallPrompt = null;
+      });
+    }
+
+    window.addEventListener('appinstalled', () => {
+      if (installBtn) installBtn.classList.add('hidden');
+      deferredInstallPrompt = null;
+    });
+  }
+
+  function getOfflineQueue() {
+    try {
+      const q = localStorage.getItem(OFFLINE_QUEUE_KEY);
+      return q ? JSON.parse(q) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function saveOfflineQueue(queue) {
+    try {
+      localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(queue));
+    } catch (e) {
+      console.warn('Could not save offline queue:', e);
+    }
+  }
+
+  function addToOfflineQueue(action) {
+    const queue = getOfflineQueue();
+    queue.push({ ...action, queuedAt: Date.now() });
+    saveOfflineQueue(queue);
+    updateNetworkStatus();
+  }
+
+  function updateNetworkStatus() {
+    const offlineIndicator = document.getElementById('offline-indicator');
+    const offlineText = document.getElementById('offline-indicator-text');
+    const isOnline = navigator.onLine;
+    const queue = getOfflineQueue();
+    const t = I18N[currentLang] || I18N.ar;
+
+    if (offlineIndicator) {
+      if (!isOnline) {
+        offlineIndicator.classList.remove('hidden');
+        if (offlineText) offlineText.textContent = t.offlineBadge;
+      } else if (queue.length > 0) {
+        offlineIndicator.classList.remove('hidden');
+        if (offlineText) offlineText.textContent = `${t.syncingBadge} (${queue.length})`;
+      } else {
+        offlineIndicator.classList.add('hidden');
+      }
+    }
+  }
+
+  let isSyncing = false;
+  async function syncOfflineQueue() {
+    if (isSyncing || !navigator.onLine) return;
+    const queue = getOfflineQueue();
+    if (!queue.length) return;
+
+    isSyncing = true;
+    const remaining = [];
+    let syncedCount = 0;
+
+    for (const item of queue) {
+      try {
+        if (item.type === 'create_log') {
+          const res = await fetch(`${API_BASE}/logs`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(item.payload)
+          });
+          if (res.ok) {
+            const saved = await res.json();
+            if (saved && saved.id) {
+              const rec = records.find(r => r.id === item.payload.id || r._id === item.payload._id);
+              if (rec) rec.id = saved.id;
+              saveRecordsLocal();
+            }
+            syncedCount++;
+          } else {
+            remaining.push(item);
+          }
+        } else if (item.type === 'status_update') {
+          const res = await fetch(`${API_BASE}/logs/${item.id}/status`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: item.status, timestamp: item.timestamp })
+          });
+          if (res.ok) syncedCount++;
+          else remaining.push(item);
+        } else if (item.type === 'delete_log') {
+          const res = await fetch(`${API_BASE}/logs/${item.id}`, { method: 'DELETE' });
+          if (res.ok) syncedCount++;
+          else remaining.push(item);
+        } else if (item.type === 'create_overtime') {
+          const res = await fetch(`${API_BASE}/overtime`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(item.payload)
+          });
+          if (res.ok) syncedCount++;
+          else remaining.push(item);
+        }
+      } catch (err) {
+        remaining.push(item);
+        break;
+      }
+    }
+
+    saveOfflineQueue(remaining);
+    isSyncing = false;
+    updateNetworkStatus();
+
+    if (syncedCount > 0) {
+      showToast(currentLang === 'ar'
+        ? `تمت مزامنة (${syncedCount}) عمليات كانت محفوظة محلياً`
+        : `Synced (${syncedCount}) offline operations`);
+    }
+  }
+
   // Boot
   async function init() {
     await loadData();
@@ -3128,6 +3377,16 @@
     startClock();
     refreshWorkerDropdowns();
     setupEvents();
+    initPWA();
+    updateNetworkStatus();
+
+    window.addEventListener('online', () => {
+      updateNetworkStatus();
+      syncOfflineQueue();
+      fetchServerRecords();
+    });
+    window.addEventListener('offline', updateNetworkStatus);
+    setInterval(syncOfflineQueue, 8000);
 
     // Async pre-fetch users for cache & dropdowns
     fetch(`${API_BASE}/users`).then(r => r.json()).then(users => {

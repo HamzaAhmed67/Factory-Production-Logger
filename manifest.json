@@ -1,0 +1,25 @@
+{
+  "name": "UG Enterprise Production Operations",
+  "short_name": "UG Production",
+  "description": "Daily Production & Night Shift Attendance Logger",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#1e2540",
+  "theme_color": "#1e2540",
+  "icons": [
+    {
+      "src": "logo-transparent.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
