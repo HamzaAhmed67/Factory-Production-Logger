@@ -98,6 +98,8 @@ const logSchema = new mongoose.Schema({
   time: { type: String, required: true },
   notes: { type: String, default: '', trim: true },
   assignedBy: { type: String, default: null, trim: true },
+  targetDurationMinutes: { type: Number, default: null },
+  deadline: { type: String, default: null },
   createdAt: { type: Date, default: Date.now }
 });
 
@@ -184,7 +186,7 @@ app.get('/api/logs', async (req, res) => {
 
 app.post('/api/logs', async (req, res) => {
   try {
-    let { worker, task, product, weight, unit, quantity, status, startedAt, finishedAt, kneadingAt, ovenAt, millingAt, date, time, assignedBy, notes } = req.body;
+    let { worker, task, product, weight, unit, quantity, status, startedAt, finishedAt, kneadingAt, ovenAt, millingAt, date, time, assignedBy, notes, targetDurationMinutes, deadline } = req.body;
     if (!quantity && weight) {
       quantity = `${weight} ${unit || 'kg'}`;
     }
@@ -209,6 +211,8 @@ app.post('/api/logs', async (req, res) => {
       date: date || new Date().toISOString().slice(0, 10),
       time: time || new Date().toTimeString().slice(0, 8),
       assignedBy: assignedBy || null,
+      targetDurationMinutes: (targetDurationMinutes != null && !isNaN(Number(targetDurationMinutes))) ? Number(targetDurationMinutes) : null,
+      deadline: deadline || null,
       createdAt: new Date()
     };
 
@@ -704,7 +708,7 @@ app.put('/api/users/:username', async (req, res) => {
 // Server boot
 async function start() {
   try {
-    await mongoose.connect(MONGODB_URI, { serverSelectionTimeoutMS: 3000 });
+    await mongoose.connect(MONGODB_URI, { serverSelectionTimeoutMS: 8000 });
     console.log('[OK] MongoDB connected successfully');
     await seedMongoUsers();
   } catch (err) {

@@ -369,6 +369,29 @@ test('API Integration Tests (Stdlib)', async (t) => {
     assert.equal(found.assignedBy, 'supervisor1');
   });
 
+  await t.test('Supervisor / Admin assigns job with target duration and deadline for countdown', async () => {
+    const testDeadline = new Date(Date.now() + 120 * 60000).toISOString();
+    const res = await request(server, '/api/logs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        worker: 'worker1',
+        task: 'عجن',
+        product: 'مركب طبي',
+        weight: '100',
+        unit: 'kg',
+        status: 'pending',
+        assignedBy: 'admin',
+        targetDurationMinutes: 120,
+        deadline: testDeadline
+      })
+    });
+    assert.equal(res.status, 201);
+    const data = await res.json();
+    assert.equal(data.targetDurationMinutes, 120);
+    assert.equal(data.deadline, testDeadline);
+  });
+
   await t.test('Client UI units and action labels: kg/g in English and Start Production label', async () => {
     const fs = require('node:fs');
     const appJsContent = fs.readFileSync('app.js', 'utf8');

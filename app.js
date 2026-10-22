@@ -220,6 +220,10 @@
       placeholderAssignWeight: 'Quantity...',
       lblAssignNotes: 'Notes',
       placeholderAssignNotes: 'Instructions or directives...',
+      lblAssignDuration: 'Target Completion Time',
+      placeholderAssignDuration: 'Duration (e.g. 2)...',
+      optDurationHours: 'Hours',
+      optDurationMins: 'Minutes',
       lblWorkerNotes: 'Notes (Optional)',
       placeholderWorkerNotes: 'Any operational notes...',
       btnAssignSubmit: 'Dispatch Work Order',
@@ -412,6 +416,10 @@
       placeholderAssignWeight: 'الكمية...',
       lblAssignNotes: 'ملاحظات',
       placeholderAssignNotes: 'ملاحظات أو توجيهات...',
+      lblAssignDuration: 'الوقت المحدد للإنجاز',
+      placeholderAssignDuration: 'المدة (مثال: 2)...',
+      optDurationHours: 'ساعة',
+      optDurationMins: 'دقيقة',
       lblWorkerNotes: 'ملاحظات (اختياري)',
       placeholderWorkerNotes: 'أي ملاحظات تخص التشغيلة أو التوجيهات...',
       btnAssignSubmit: 'إسناد وتكليف أمر التشغيل',
@@ -838,6 +846,10 @@
     setPlaceholder('assign-weight-input', t.placeholderAssignWeight);
     setText('lbl-assign-notes', t.lblAssignNotes);
     setPlaceholder('assign-notes-input', t.placeholderAssignNotes);
+    setText('lbl-assign-duration', t.lblAssignDuration);
+    setPlaceholder('assign-duration-input', t.placeholderAssignDuration);
+    setText('opt-duration-hours', t.optDurationHours);
+    setText('opt-duration-mins', t.optDurationMins);
     setText('btn-assign-text', t.btnAssignSubmit);
 
     // User Management View
@@ -938,6 +950,118 @@
     }
   }
 
+  // Live Countdown & Target Timers
+  function formatCountdownTime(totalSeconds) {
+    const abs = Math.abs(totalSeconds);
+    const h = Math.floor(abs / 3600);
+    const m = Math.floor((abs % 3600) / 60);
+    const s = abs % 60;
+    const pad = n => String(n).padStart(2, '0');
+    return `${pad(h)}:${pad(m)}:${pad(s)}`;
+  }
+
+  function renderCountdownContent(deadline, status, finishedAt, targetMinutes, lang = currentLang) {
+    if (!deadline) return '';
+    const isAr = lang === 'ar';
+    const isCompleted = status === 'completed';
+
+    if (isCompleted) {
+      return `
+        <div class="flex items-center gap-2 text-emerald-800 dark:text-emerald-300 font-mono text-xs font-bold">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span>
+          <span>${isAr ? 'تم الإنجاز في الوقت المحدد' : 'Completed On Time'}</span>
+          ${targetMinutes ? `<span class="text-[11px] font-normal text-emerald-600 dark:text-emerald-400">(${isAr ? 'المدة المحددة' : 'Target'}: ${localizeDigits(targetMinutes, lang)} ${isAr ? 'دقيقة' : 'min'})</span>` : ''}
+        </div>
+      `;
+    }
+
+    const diffMs = new Date(deadline).getTime() - Date.now();
+    const diffSec = Math.floor(diffMs / 1000);
+
+    if (diffSec > 0) {
+      const timeStr = formatCountdownTime(diffSec);
+      const isUrgent = diffSec < 900; // < 15 mins
+      return `
+        <div class="flex items-center flex-wrap gap-2 ${isUrgent ? 'text-amber-800 dark:text-amber-300' : 'text-cyan-800 dark:text-cyan-300'} font-mono text-xs font-bold">
+          <span class="inline-block w-2.5 h-2.5 rounded-full ${isUrgent ? 'bg-amber-500 animate-ping' : 'bg-cyan-500 animate-pulse'}"></span>
+          <span>${isUrgent ? (isAr ? '⏳ قارب الوقت على الانتهاء:' : '⏳ Deadline Warning:') : (isAr ? '⏱️ الوقت المتبقي للإنجاز:' : '⏱️ Time Remaining:')}</span>
+          <span class="px-2 py-0.5 rounded font-black tracking-wider text-sm ${isUrgent ? 'bg-amber-100 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200' : 'bg-cyan-100 dark:bg-cyan-950 text-cyan-900 dark:text-cyan-100'}">${timeStr}</span>
+        </div>
+        ${targetMinutes ? `
+          <div class="text-[11px] font-mono text-slate-500 dark:text-slate-400 font-medium">
+            ${isAr ? 'المحدد من الإدارة:' : 'Target Time:'} ${targetMinutes >= 60 ? (targetMinutes / 60) + (isAr ? ' ساعة' : ' hrs') : targetMinutes + (isAr ? ' دقيقة' : ' mins')}
+          </div>
+        ` : ''}
+      `;
+    } else {
+      const overdueStr = formatCountdownTime(diffSec);
+      return `
+        <div class="flex items-center flex-wrap gap-2 text-rose-800 dark:text-rose-300 font-mono text-xs font-bold">
+          <span class="inline-block w-2.5 h-2.5 rounded-full bg-rose-600 animate-ping"></span>
+          <span>${isAr ? '🚨 متأخر عن الوقت المحدد بـ:' : '🚨 Overdue by:'}</span>
+          <span class="px-2 py-0.5 rounded font-black tracking-wider text-sm bg-rose-100 dark:bg-rose-950 text-rose-900 dark:text-rose-200 border border-rose-300 dark:border-rose-800 animate-pulse">+${overdueStr}</span>
+        </div>
+        ${targetMinutes ? `
+          <div class="text-[11px] font-mono text-rose-600 dark:text-rose-400 font-bold">
+            ${isAr ? 'تجاوز الوقت المستهدف' : 'Exceeded target deadline'}
+          </div>
+        ` : ''}
+      `;
+    }
+  }
+
+  function renderAdminCountdownPill(deadline, status, lang = currentLang) {
+    if (!deadline) return '';
+    const isAr = lang === 'ar';
+    if (status === 'completed') {
+      return `<span class="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300">✓ ${isAr ? 'أُنجز' : 'Done'}</span>`;
+    }
+    const diffMs = new Date(deadline).getTime() - Date.now();
+    const diffSec = Math.floor(diffMs / 1000);
+    if (diffSec > 0) {
+      const isUrgent = diffSec < 900;
+      const str = formatCountdownTime(diffSec);
+      return `<span class="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold ${isUrgent ? 'bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200 border border-amber-300 animate-pulse' : 'bg-cyan-100 text-cyan-900 dark:bg-cyan-950 dark:text-cyan-200 border border-cyan-300'}">⏱ ${str}</span>`;
+    } else {
+      const str = formatCountdownTime(diffSec);
+      return `<span class="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-rose-100 text-rose-900 dark:bg-rose-950 dark:text-rose-200 border border-rose-300 animate-pulse">🚨 +${str}</span>`;
+    }
+  }
+
+  function updateLiveCountdowns() {
+    const boxes = document.querySelectorAll('.task-countdown-box[data-deadline]');
+    boxes.forEach(el => {
+      const deadline = el.getAttribute('data-deadline');
+      const status = el.getAttribute('data-status');
+      const finishedAt = el.getAttribute('data-finished') || '';
+      const targetMin = el.getAttribute('data-target-minutes') || '';
+      if (!deadline) return;
+
+      el.innerHTML = renderCountdownContent(deadline, status, finishedAt, targetMin, currentLang);
+
+      const isCompleted = status === 'completed';
+      const diffMs = new Date(deadline).getTime() - Date.now();
+      const baseClass = 'task-countdown-box flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-lg border transition-all ';
+      if (isCompleted) {
+        el.className = baseClass + 'bg-emerald-50/70 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800/60';
+      } else if (diffMs <= 0) {
+        el.className = baseClass + 'bg-rose-50/90 dark:bg-rose-950/50 border-rose-300 dark:border-rose-800/80 shadow-xs';
+      } else if (diffMs < 900000) {
+        el.className = baseClass + 'bg-amber-50/80 dark:bg-amber-950/40 border-amber-300 dark:border-amber-700/60';
+      } else {
+        el.className = baseClass + 'bg-cyan-50/70 dark:bg-cyan-950/30 border-cyan-200 dark:border-cyan-800/60';
+      }
+    });
+
+    const pills = document.querySelectorAll('.admin-countdown-pill[data-deadline]');
+    pills.forEach(el => {
+      const deadline = el.getAttribute('data-deadline');
+      const status = el.getAttribute('data-status');
+      if (!deadline) return;
+      el.innerHTML = renderAdminCountdownPill(deadline, status, currentLang);
+    });
+  }
+
   // Live Clock
   function startClock() {
     const clockEl = document.getElementById('header-live-time');
@@ -953,6 +1077,8 @@
       if (clockEl) clockEl.textContent = `${timeStr} | ${dateStr}`;
       if (workerBadge) workerBadge.textContent = `${timeStr} (${isAr ? 'توقيت النظام' : 'SYSTEM TIME'})`;
       if (otClockEl) otClockEl.textContent = `${timeStr} | ${dateStr}`;
+
+      updateLiveCountdowns();
     }
 
     update();
@@ -1660,6 +1786,8 @@
     const weightInput = document.getElementById('assign-weight-input');
     const unitSelect = document.getElementById('assign-unit-select');
     const notesInput = document.getElementById('assign-notes-input');
+    const durationInput = document.getElementById('assign-duration-input');
+    const durationUnitSelect = document.getElementById('assign-duration-unit');
 
     const worker = workerSelect.value.trim();
     const task = taskSelect.value.trim();
@@ -1667,6 +1795,17 @@
     const parsedWeight = parseQuantityInput(weightInput.value);
     const unit = unitSelect.value.trim() || (currentLang === 'ar' ? 'كجم' : 'kg');
     const notes = notesInput ? notesInput.value.trim() : '';
+
+    let targetDurationMinutes = null;
+    let deadline = null;
+    if (durationInput && durationInput.value.trim()) {
+      const rawNum = parseFloat(durationInput.value.trim());
+      if (!isNaN(rawNum) && rawNum > 0) {
+        const u = durationUnitSelect ? durationUnitSelect.value : 'hours';
+        targetDurationMinutes = u === 'hours' ? Math.round(rawNum * 60) : Math.round(rawNum);
+        deadline = new Date(Date.now() + targetDurationMinutes * 60000).toISOString();
+      }
+    }
 
     if (!worker || !task || !product || !parsedWeight) {
       showToast(currentLang === 'ar' ? 'يرجى ملء جميع الحقول بشكل صحيح' : 'Please fill all fields accurately', true);
@@ -1693,7 +1832,9 @@
       notes,
       date: currentDate,
       time: exactTime,
-      assignedBy: currentUser.name || currentUser.username
+      assignedBy: currentUser.name || currentUser.username,
+      targetDurationMinutes,
+      deadline
     };
 
     records.unshift(newRecord);
@@ -1702,6 +1843,7 @@
     productInput.value = '';
     weightInput.value = '';
     if (notesInput) notesInput.value = '';
+    if (durationInput) durationInput.value = '';
 
     showToast(currentLang === 'ar' 
       ? `تم إسناد أمر التشغيل [${task} - ${product}] إلى ${worker}` 
@@ -2069,6 +2211,22 @@
             </div>
           ` : ''}
 
+          ${task.deadline ? `
+            <div class="task-countdown-box flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-lg border transition-all ${
+              isCompleted 
+                ? 'bg-emerald-50/70 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800/60'
+                : (new Date(task.deadline).getTime() <= Date.now())
+                  ? 'bg-rose-50/90 dark:bg-rose-950/50 border-rose-300 dark:border-rose-800/80 shadow-xs'
+                  : 'bg-cyan-50/70 dark:bg-cyan-950/30 border-cyan-200 dark:border-cyan-800/60'
+            }"
+              data-deadline="${escapeHtml(task.deadline)}"
+              data-status="${escapeHtml(task.status || 'pending')}"
+              data-finished="${escapeHtml(task.finishedAt || '')}"
+              data-target-minutes="${escapeHtml(task.targetDurationMinutes ? String(task.targetDurationMinutes) : '')}">
+              ${renderCountdownContent(task.deadline, task.status, task.finishedAt, task.targetDurationMinutes, currentLang)}
+            </div>
+          ` : ''}
+
           <!-- Visual Progress -->
           ${progressHtml}
 
@@ -2383,6 +2541,11 @@
           </td>
           <td class="py-2.5 px-3 text-center">
             ${badgeHtml}
+            ${r.deadline ? `
+              <div class="admin-countdown-pill mt-1" data-deadline="${escapeHtml(r.deadline)}" data-status="${escapeHtml(r.status || 'pending')}">
+                ${renderAdminCountdownPill(r.deadline, r.status, currentLang)}
+              </div>
+            ` : ''}
           </td>
           <td class="py-2 px-3 text-center">
             ${isKnead ? `
