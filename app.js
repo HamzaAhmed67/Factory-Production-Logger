@@ -141,11 +141,15 @@
       lblClockTitle: 'System Captured Time:',
       btnSubmitTask: 'Register Work Order',
       workerStagesTitle: 'Work Orders & Operations',
-      workerStagesDesc: 'Sequence: 1. Pending -> 2. In Progress (Timestamp captured) -> 3. Completed (Timestamp captured). Irreversible.',
+      workerStagesDesc: 'Sequence: For Kneading (1. Pending -> 2. Kneading -> 3. Oven -> 4. Milling -> 5. Completed) • For Other Operations (1. Pending -> 2. In Progress -> 3. Completed).',
       stage1Label: '1. PENDING',
-      stage2Label: '2. IN PROGRESS',
-      stage3Label: '3. COMPLETED',
+      stage2Label: '2. KNEADING',
+      stage3Label: '3. OVEN',
+      stage4Label: '4. MILLING',
+      stage5Label: '5. COMPLETED',
       btnStartTask: 'Start Production',
+      btnEnterOven: 'Enter Oven',
+      btnStartMilling: 'Start Milling',
       btnFinishTask: 'Complete Task',
       taskStartedAt: 'Started:',
       taskFinishedAt: 'Finished:',
@@ -174,9 +178,12 @@
       lblCredAdmin: 'System Administrator (Password: 123):',
       optFilterAllWorkers: 'All Operators',
       optFilterAllStatuses: 'All Operational Stages',
-      optStatusPending: 'Pending',
+      optStatusPending: '1. Pending',
+      optStatusKneading: '2. Kneading',
+      optStatusOven: '3. Oven',
+      optStatusMilling: '4. Milling',
+      optStatusCompleted: '5. Completed',
       optStatusInProgress: 'In Progress',
-      optStatusCompleted: 'Completed',
       statLogs: 'Total Work Orders',
       statWorkers: 'Active Operators',
       kpiHeading: 'Operator Performance Metrics',
@@ -197,8 +204,9 @@
       thTask: 'Operation',
       thProduct: 'Product',
       thQty: 'Quantity',
+      thNotes: 'Notes',
       thStatus: 'Status',
-      thStart: 'Started',
+      thStart: 'Started / Stages',
       thFinish: 'Finished',
       thAction: 'Action',
       btnDelete: 'Delete',
@@ -210,6 +218,10 @@
       assignSubheading: 'Specify operator, operation, and required quantity for immediate dispatch',
       lblAssignWeight: 'Quantity & Unit *',
       placeholderAssignWeight: 'Quantity...',
+      lblAssignNotes: 'Notes',
+      placeholderAssignNotes: 'Instructions or directives...',
+      lblWorkerNotes: 'Notes (Optional)',
+      placeholderWorkerNotes: 'Any operational notes...',
       btnAssignSubmit: 'Dispatch Work Order',
       adminEmpty: 'No production work orders recorded yet.',
       adminFilterEmpty: 'No records match search criteria.',
@@ -321,12 +333,16 @@
       lblClockTitle: 'وقت التسجيل في النظام:',
       btnSubmitTask: 'إدراج أمر العمل وبدء المراحل التشغيلية',
       workerStagesTitle: 'أوامر العمل ومراحل التنفيذ',
-      workerStagesDesc: 'تسلسل العمل: 1. قيد الانتظار ← 2. قيد التشغيل (تسجيل وقت البدء) ← 3. مكتمل (تسجيل وقت الإنجاز).',
+      workerStagesDesc: 'تسلسل العمل: لعمليات العجن (1. قيد الانتظار ← 2. بدء عجن ← 3. دخول الفرن ← 4. مرحلة الطحن ← 5. مكتمل) • للعمليات الأخرى (1. قيد الانتظار ← 2. قيد التشغيل ← 3. مكتمل).',
       stage1Label: '1. قيد الانتظار',
-      stage2Label: '2. قيد التشغيل',
-      stage3Label: '3. مكتمل',
-      btnStartTask: 'بدء التنفيذ',
-      btnFinishTask: 'إتمام المهمة',
+      stage2Label: '2. بدء عجن',
+      stage3Label: '3. دخول الفرن',
+      stage4Label: '4. مرحلة الطحن',
+      stage5Label: '5. مكتمل',
+      btnStartTask: 'بدء عجن',
+      btnEnterOven: 'دخول الفرن',
+      btnStartMilling: 'مرحلة الطحن',
+      btnFinishTask: 'إتمام العملية',
       taskStartedAt: 'وقت البدء:',
       taskFinishedAt: 'وقت الانتهاء:',
       taskCompletedLocked: 'مكتمل ومغلق',
@@ -354,9 +370,12 @@
       lblCredAdmin: 'مدير النظام (System Admin - Password: 123):',
       optFilterAllWorkers: 'جميع المشغلين',
       optFilterAllStatuses: 'جميع المراحل',
-      optStatusPending: 'قيد الانتظار',
+      optStatusPending: '1. قيد الانتظار',
+      optStatusKneading: '2. بدء عجن',
+      optStatusOven: '3. دخول الفرن',
+      optStatusMilling: '4. مرحلة الطحن',
+      optStatusCompleted: '5. مكتمل',
       optStatusInProgress: 'قيد التشغيل',
-      optStatusCompleted: 'مكتمل',
       statLogs: 'إجمالي أوامر الإنتاج',
       statWorkers: 'المشغلون النشطون',
       kpiHeading: 'مؤشرات أداء المشغلين',
@@ -377,8 +396,9 @@
       thTask: 'العملية',
       thProduct: 'المنتج',
       thQty: 'الكمية',
+      thNotes: 'الملاحظات',
       thStatus: 'الحالة',
-      thStart: 'وقت البدء',
+      thStart: 'وقت البدء / المراحل',
       thFinish: 'وقت الانتهاء',
       thAction: 'إجراء',
       btnDelete: 'حذف',
@@ -390,6 +410,10 @@
       assignSubheading: 'تحديد المشغل، العملية المستهدفة، والكمية المطلوبة لتظهر فوراً في جدول أعمال المشغل',
       lblAssignWeight: 'الكمية والوحدة *',
       placeholderAssignWeight: 'الكمية...',
+      lblAssignNotes: 'ملاحظات',
+      placeholderAssignNotes: 'ملاحظات أو توجيهات...',
+      lblWorkerNotes: 'ملاحظات (اختياري)',
+      placeholderWorkerNotes: 'أي ملاحظات تخص التشغيلة أو التوجيهات...',
       btnAssignSubmit: 'إسناد وتكليف أمر التشغيل',
       adminEmpty: 'لم يتم تسجيل أي عمليات إنتاج حتى الآن.',
       adminFilterEmpty: 'لا توجد سجلات تطابق معايير البحث المحددة.',
@@ -730,6 +754,8 @@
     setText('lbl-weight-input', t.lblWeightInput);
     setPlaceholder('worker-weight-input', t.placeholderWeight);
     setText('lbl-unit-select', t.lblUnitSelect);
+    setText('lbl-worker-notes', t.lblWorkerNotes);
+    setPlaceholder('worker-notes-input', t.placeholderWorkerNotes);
     setText('lbl-clock-title', t.lblClockTitle);
     setText('btn-submit-text', t.btnSubmitTask);
     setText('worker-stages-title', t.workerStagesTitle);
@@ -797,6 +823,7 @@
     setText('th-a-task', t.thTask);
     setText('th-a-product', t.thProduct);
     setText('th-a-qty', t.thQty);
+    setText('th-a-notes', t.thNotes);
     setText('th-a-status', t.thStatus);
     setText('th-a-start', t.thStart);
     setText('th-a-finish', t.thFinish);
@@ -809,6 +836,8 @@
     setPlaceholder('assign-product-input', t.placeholderAssignProduct);
     setText('lbl-assign-weight', t.lblAssignWeight);
     setPlaceholder('assign-weight-input', t.placeholderAssignWeight);
+    setText('lbl-assign-notes', t.lblAssignNotes);
+    setPlaceholder('assign-notes-input', t.placeholderAssignNotes);
     setText('btn-assign-text', t.btnAssignSubmit);
 
     // User Management View
@@ -829,6 +858,9 @@
     setText('opt-filter-all-workers', t.optFilterAllWorkers);
     setText('opt-filter-all-statuses', t.optFilterAllStatuses);
     setText('opt-status-pending', t.optStatusPending);
+    setText('opt-status-kneading', t.optStatusKneading);
+    setText('opt-status-oven', t.optStatusOven);
+    setText('opt-status-milling', t.optStatusMilling);
     setText('opt-status-in-progress', t.optStatusInProgress);
     setText('opt-status-completed', t.optStatusCompleted);
 
@@ -1543,6 +1575,8 @@
     const product = productInput.value.trim();
     const parsedWeight = parseQuantityInput(weightInput.value);
     const unit = unitSelect.value.trim() || (currentLang === 'ar' ? 'كجم' : 'kg');
+    const notesInput = document.getElementById('worker-notes-input');
+    const notes = notesInput ? notesInput.value.trim() : '';
 
     if (!task) {
       showToast(currentLang === 'ar' ? 'يرجى تحديد نوع العملية' : 'Please select operation', true);
@@ -1579,6 +1613,7 @@
       status: 'pending',
       startedAt: null,
       finishedAt: null,
+      notes,
       date: currentDate,
       time: exactTime
     };
@@ -1588,6 +1623,7 @@
 
     productInput.value = '';
     weightInput.value = '';
+    if (notesInput) notesInput.value = '';
     productInput.focus();
 
     showToast(t.toastTaskAdded(task, product));
@@ -1623,12 +1659,14 @@
     const productInput = document.getElementById('assign-product-input');
     const weightInput = document.getElementById('assign-weight-input');
     const unitSelect = document.getElementById('assign-unit-select');
+    const notesInput = document.getElementById('assign-notes-input');
 
     const worker = workerSelect.value.trim();
     const task = taskSelect.value.trim();
     const product = productInput.value.trim();
     const parsedWeight = parseQuantityInput(weightInput.value);
     const unit = unitSelect.value.trim() || (currentLang === 'ar' ? 'كجم' : 'kg');
+    const notes = notesInput ? notesInput.value.trim() : '';
 
     if (!worker || !task || !product || !parsedWeight) {
       showToast(currentLang === 'ar' ? 'يرجى ملء جميع الحقول بشكل صحيح' : 'Please fill all fields accurately', true);
@@ -1652,6 +1690,7 @@
       status: 'pending',
       startedAt: null,
       finishedAt: null,
+      notes,
       date: currentDate,
       time: exactTime,
       assignedBy: currentUser.name || currentUser.username
@@ -1662,6 +1701,7 @@
 
     productInput.value = '';
     weightInput.value = '';
+    if (notesInput) notesInput.value = '';
 
     showToast(currentLang === 'ar' 
       ? `تم إسناد أمر التشغيل [${task} - ${product}] إلى ${worker}` 
@@ -1689,67 +1729,88 @@
     }
   }
 
-  // 3-Stages Interactive Workflow
-  async function startTask(id) {
+  // 5-Stages Interactive Workflow (قيد الانتظار -> بدء عجن -> دخول الفرن -> مرحلة الطحن -> مكتمل)
+  async function advanceTaskStatus(id, newStatus) {
     const item = records.find(r => String(r.id || r._id) === String(id));
-    if (!item || (item.status && item.status !== 'pending')) return;
+    if (!item) return;
 
     const now = new Date();
     const timestamp = getExactTimeString(now);
     const t = I18N[currentLang];
 
-    item.status = 'in_progress';
-    item.startedAt = timestamp;
+    item.status = newStatus;
+    if (newStatus === 'kneading') {
+      item.kneadingAt = timestamp;
+      if (!item.startedAt) item.startedAt = timestamp;
+    } else if (newStatus === 'oven') {
+      item.ovenAt = timestamp;
+    } else if (newStatus === 'milling') {
+      item.millingAt = timestamp;
+    } else if (newStatus === 'in_progress') {
+      if (!item.startedAt) item.startedAt = timestamp;
+    } else if (newStatus === 'completed') {
+      if (!item.finishedAt) item.finishedAt = timestamp;
+    }
+
     saveRecordsLocal();
     renderWorkerTasks();
-    showToast(t.toastTaskStarted(item.task, timestamp));
+    renderAdminDashboard();
+
+    if (newStatus === 'kneading') {
+      showToast(t.toastTaskStarted(item.task, timestamp));
+    } else if (newStatus === 'oven') {
+      showToast(currentLang === 'ar' ? `تم التحويل لمرحلة دخول الفرن: ${item.task} الساعة ${timestamp}` : `Moved to oven: ${item.task} at ${timestamp}`);
+    } else if (newStatus === 'milling') {
+      showToast(currentLang === 'ar' ? `تم التحويل لمرحلة الطحن: ${item.task} الساعة ${timestamp}` : `Moved to milling: ${item.task} at ${timestamp}`);
+    } else if (newStatus === 'completed') {
+      showToast(t.toastTaskFinished(item.task, timestamp));
+    }
 
     try {
       const targetId = item.id || item._id;
       const res = await fetch(`${API_BASE}/logs/${targetId}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'in_progress', timestamp })
+        body: JSON.stringify({ status: newStatus, timestamp })
       });
-      if (!res.ok) {
-        addToOfflineQueue({ type: 'status_update', id: targetId, status: 'in_progress', timestamp });
+      if (res.ok) {
+        const updated = await res.json();
+        if (updated) {
+          if (updated.kneadingAt) item.kneadingAt = updated.kneadingAt;
+          if (updated.ovenAt) item.ovenAt = updated.ovenAt;
+          if (updated.millingAt) item.millingAt = updated.millingAt;
+          if (updated.startedAt) item.startedAt = updated.startedAt;
+          if (updated.finishedAt) item.finishedAt = updated.finishedAt;
+          saveRecordsLocal();
+          renderWorkerTasks();
+          renderAdminDashboard();
+        }
+      } else {
+        addToOfflineQueue({ type: 'status_update', id: targetId, status: newStatus, timestamp });
       }
     } catch (err) {
       console.warn('Backend update failed, queued offline:', err);
       const targetId = item.id || item._id;
-      addToOfflineQueue({ type: 'status_update', id: targetId, status: 'in_progress', timestamp });
+      addToOfflineQueue({ type: 'status_update', id: targetId, status: newStatus, timestamp });
     }
   }
 
-  async function finishTask(id) {
+  function isKneadingTask(task) {
+    if (!task) return false;
+    const t = String(task).trim().toLowerCase();
+    return t.includes('عجن') || t.includes('knead');
+  }
+
+  async function startTask(id) {
     const item = records.find(r => String(r.id || r._id) === String(id));
-    if (!item || item.status !== 'in_progress') return;
-
-    const now = new Date();
-    const timestamp = getExactTimeString(now);
-    const t = I18N[currentLang];
-
-    item.status = 'completed';
-    item.finishedAt = timestamp;
-    saveRecordsLocal();
-    renderWorkerTasks();
-    showToast(t.toastTaskFinished(item.task, timestamp));
-
-    try {
-      const targetId = item.id || item._id;
-      const res = await fetch(`${API_BASE}/logs/${targetId}/status`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'completed', timestamp })
-      });
-      if (!res.ok) {
-        addToOfflineQueue({ type: 'status_update', id: targetId, status: 'completed', timestamp });
-      }
-    } catch (err) {
-      console.warn('Backend update failed, queued offline:', err);
-      const targetId = item.id || item._id;
-      addToOfflineQueue({ type: 'status_update', id: targetId, status: 'completed', timestamp });
+    if (item && isKneadingTask(item.task)) {
+      return advanceTaskStatus(id, 'kneading');
     }
+    return advanceTaskStatus(id, 'in_progress');
+  }
+
+  async function finishTask(id) {
+    return advanceTaskStatus(id, 'completed');
   }
 
   // Render Worker Tasks
@@ -1799,9 +1860,13 @@
       const orderIndex = chronoTasks.findIndex(t => String(t.id || t._id) === String(task.id || task._id));
       const seqNum = orderIndex !== -1 ? orderIndex + 1 : 1;
       const orderNumber = `#${localizeDigits(seqNum, currentLang)}`;
+      const isKnead = isKneadingTask(task.task);
 
-      const isPending = status === 'pending';
+      const isPending = !status || status === 'pending';
+      const isKneading = status === 'kneading';
       const isInProgress = status === 'in_progress';
+      const isOven = status === 'oven';
+      const isMilling = status === 'milling';
       const isCompleted = status === 'completed';
 
       const isAr = currentLang === 'ar';
@@ -1810,6 +1875,157 @@
       const displayQty = formatDisplayQuantity(task.quantity || `${task.weight} ${task.unit || 'kg'}`, task.unit, currentLang);
       const displayStarted = task.startedAt ? formatDisplayTime(task.startedAt, currentLang) : null;
       const displayFinished = task.finishedAt ? formatDisplayTime(task.finishedAt, currentLang) : null;
+      const displayKneading = task.kneadingAt ? formatDisplayTime(task.kneadingAt, currentLang) : displayStarted;
+      const displayOven = task.ovenAt ? formatDisplayTime(task.ovenAt, currentLang) : null;
+      const displayMilling = task.millingAt ? formatDisplayTime(task.millingAt, currentLang) : null;
+
+      // 5 Stages for Kneading vs 3 Stages for Other Tasks
+      const progressHtml = isKnead ? `
+        <!-- 5 Stages for Kneading Operation -->
+        <div class="grid grid-cols-2 sm:grid-cols-5 gap-1.5 text-center text-[10px] sm:text-xs font-mono font-bold leading-tight">
+          <!-- Stage 1: قيد الانتظار -->
+          <div class="py-1.5 px-1 rounded transition ${
+            isPending 
+              ? 'bg-[#1e2540] text-white shadow-sm ring-1 ring-[#1e2540]' 
+              : 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+          }">
+            <div>${isAr ? '1. قيد الانتظار' : '1. PENDING'}</div>
+          </div>
+
+          <!-- Stage 2: بدء عجن -->
+          <div class="py-1.5 px-1 rounded transition ${
+            isKneading 
+              ? 'bg-amber-500 text-slate-950 shadow-sm ring-1 ring-amber-400 font-extrabold' 
+              : (isOven || isMilling || isCompleted)
+                ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800' 
+                : 'bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500'
+          }">
+            <div>${isAr ? '2. بدء عجن' : '2. KNEADING'}</div>
+          </div>
+
+          <!-- Stage 3: دخول الفرن -->
+          <div class="py-1.5 px-1 rounded transition ${
+            isOven 
+              ? 'bg-orange-500 text-white shadow-sm ring-1 ring-orange-400 font-extrabold' 
+              : (isMilling || isCompleted)
+                ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800' 
+                : 'bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500'
+          }">
+            <div>${isAr ? '3. دخول الفرن' : '3. OVEN'}</div>
+          </div>
+
+          <!-- Stage 4: مرحلة الطحن -->
+          <div class="py-1.5 px-1 rounded transition ${
+            isMilling 
+              ? 'bg-indigo-600 text-white shadow-sm ring-1 ring-indigo-400 font-extrabold' 
+              : isCompleted 
+                ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800' 
+                : 'bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500'
+          }">
+            <div>${isAr ? '4. مرحلة الطحن' : '4. MILLING'}</div>
+          </div>
+
+          <!-- Stage 5: مكتمل -->
+          <div class="py-1.5 px-1 rounded transition ${
+            isCompleted 
+              ? 'bg-emerald-700 text-white shadow-sm font-extrabold' 
+              : 'bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500'
+          }">
+            <div>${isAr ? '5. مكتمل' : '5. COMPLETED'}</div>
+          </div>
+        </div>
+      ` : `
+        <!-- Standard 3 Stages for Other Operations -->
+        <div class="grid grid-cols-3 gap-1.5 text-center text-[10px] sm:text-xs font-mono font-bold leading-tight">
+          <!-- Stage 1: قيد الانتظار -->
+          <div class="py-1.5 px-1 rounded transition ${
+            isPending 
+              ? 'bg-[#1e2540] text-white shadow-sm ring-1 ring-[#1e2540]' 
+              : 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+          }">
+            <div>${isAr ? '1. قيد الانتظار' : '1. PENDING'}</div>
+          </div>
+
+          <!-- Stage 2: قيد التشغيل -->
+          <div class="py-1.5 px-1 rounded transition ${
+            (isInProgress || isKneading)
+              ? 'bg-amber-500 text-slate-950 shadow-sm ring-1 ring-amber-400 font-extrabold' 
+              : isCompleted 
+                ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800' 
+                : 'bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500'
+          }">
+            <div>${isAr ? '2. قيد التشغيل' : '2. IN PROGRESS'}</div>
+          </div>
+
+          <!-- Stage 3: مكتمل -->
+          <div class="py-1.5 px-1 rounded transition ${
+            isCompleted 
+              ? 'bg-emerald-700 text-white shadow-sm font-extrabold' 
+              : 'bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500'
+          }">
+            <div>${isAr ? '3. مكتمل' : '3. COMPLETED'}</div>
+          </div>
+        </div>
+      `;
+
+      // Stage Actions / Buttons
+      const actionsHtml = isKnead ? `
+        <!-- Kneading Stage Actions -->
+        ${isPending ? `
+          <div class="text-[11px] font-mono text-slate-500 dark:text-slate-400">
+            ${isAr ? 'الحالة: 1. قيد الانتظار (جاهز لبدء العجن)' : 'STATUS: WAITING TO START'}
+          </div>
+          <button type="button" class="btn-start-task w-full sm:w-auto px-4 py-2 rounded-lg font-bold text-xs bg-emerald-700 hover:bg-emerald-800 text-white shadow transition active:scale-95 cursor-pointer" data-id="${task.id || task._id}">
+            <span>${isAr ? 'بدء عجن' : t.btnStartTask}</span>
+          </button>
+        ` : ''}
+
+        ${isKneading ? `
+          <div class="text-xs font-mono font-bold text-amber-700 dark:text-amber-400">
+            ${isAr ? 'المرحلة: 2. بدء عجن' : 'STAGE: KNEADING'} | ${isAr ? 'وقت البدء:' : 'Started:'} <span class="underline">${escapeHtml(displayKneading || displayStarted || displayTime)}</span>
+          </div>
+          <button type="button" class="btn-oven-task w-full sm:w-auto px-4 py-2 rounded-lg font-bold text-xs bg-orange-600 hover:bg-orange-700 text-white shadow transition active:scale-95 cursor-pointer" data-id="${task.id || task._id}">
+            <span>${isAr ? 'دخول الفرن' : t.btnEnterOven}</span>
+          </button>
+        ` : ''}
+
+        ${isOven ? `
+          <div class="text-xs font-mono font-bold text-orange-700 dark:text-orange-400">
+            ${isAr ? 'المرحلة: 3. دخول الفرن' : 'STAGE: OVEN'} | ${isAr ? 'وقت دخول الفرن:' : 'Oven Entry:'} <span class="underline">${escapeHtml(displayOven || displayTime)}</span>
+          </div>
+          <button type="button" class="btn-milling-task w-full sm:w-auto px-4 py-2 rounded-lg font-bold text-xs bg-indigo-600 hover:bg-indigo-700 text-white shadow transition active:scale-95 cursor-pointer" data-id="${task.id || task._id}">
+            <span>${isAr ? 'مرحلة الطحن' : t.btnStartMilling}</span>
+          </button>
+        ` : ''}
+
+        ${isMilling ? `
+          <div class="text-xs font-mono font-bold text-indigo-700 dark:text-indigo-400">
+            ${isAr ? 'المرحلة: 4. مرحلة الطحن' : 'STAGE: MILLING'} | ${isAr ? 'وقت بدء الطحن:' : 'Milling Start:'} <span class="underline">${escapeHtml(displayMilling || displayTime)}</span>
+          </div>
+          <button type="button" class="btn-finish-task w-full sm:w-auto px-4 py-2 rounded-lg font-bold text-xs bg-[#1e2540] hover:bg-[#141a2e] dark:bg-amber-600 dark:hover:bg-amber-500 text-white shadow transition active:scale-95 cursor-pointer" data-id="${task.id || task._id}">
+            <span>${isAr ? 'إتمام العملية' : t.btnFinishTask}</span>
+          </button>
+        ` : ''}
+      ` : `
+        <!-- Standard Task Actions -->
+        ${isPending ? `
+          <div class="text-[11px] font-mono text-slate-500 dark:text-slate-400">
+            ${isAr ? 'الحالة: بانتظار بدء التشغيل' : 'STATUS: WAITING TO START'}
+          </div>
+          <button type="button" class="btn-start-task w-full sm:w-auto px-4 py-2 rounded-lg font-bold text-xs bg-emerald-700 hover:bg-emerald-800 text-white shadow transition active:scale-95 cursor-pointer" data-id="${task.id || task._id}">
+            <span>${isAr ? 'بدء التنفيذ' : t.btnStartTask}</span>
+          </button>
+        ` : ''}
+
+        ${(isInProgress || isKneading) ? `
+          <div class="text-xs font-mono font-bold text-amber-700 dark:text-amber-400">
+            ${t.taskStartedAt} <span class="underline">${escapeHtml(displayStarted || displayTime)}</span>
+          </div>
+          <button type="button" class="btn-finish-task w-full sm:w-auto px-4 py-2 rounded-lg font-bold text-xs bg-[#1e2540] hover:bg-[#141a2e] dark:bg-amber-600 dark:hover:bg-amber-500 text-white shadow transition active:scale-95 cursor-pointer" data-id="${task.id || task._id}">
+            <span>${isAr ? 'إتمام المهمة' : t.btnFinishTask}</span>
+          </button>
+        ` : ''}
+      `;
 
       return `
         <div class="p-4 rounded-xl glass-card border border-slate-200 dark:border-slate-800 shadow-sm space-y-3 transition">
@@ -1846,72 +2062,44 @@
             </div>
           </div>
 
-          <!-- 3 Stages Visual Progress -->
-          <div class="grid grid-cols-3 gap-1.5 text-center text-[10px] sm:text-xs font-mono font-bold leading-tight">
-            <!-- Stage 1 -->
-            <div class="py-1.5 px-1 rounded transition ${
-              isPending 
-                ? 'bg-[#1e2540] text-white shadow-sm' 
-                : 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
-            }">
-              <div>${t.stage1Label}</div>
+          ${task.notes ? `
+            <div class="p-2.5 rounded-lg bg-amber-50/80 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800/70 text-xs text-amber-950 dark:text-amber-200 flex items-start gap-2">
+              <span class="font-bold shrink-0 text-amber-700 dark:text-amber-400 font-mono">${isAr ? 'ملاحظات:' : 'Notes:'}</span>
+              <span class="break-words font-medium">${escapeHtml(task.notes)}</span>
             </div>
+          ` : ''}
 
-            <!-- Stage 2 -->
-            <div class="py-1.5 px-1 rounded transition ${
-              isInProgress 
-                ? 'bg-amber-500 text-slate-950 shadow-sm ring-1 ring-amber-400' 
-                : isCompleted 
-                  ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800' 
-                  : 'bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500'
-            }">
-              <div>${t.stage2Label}</div>
-            </div>
-
-            <!-- Stage 3 -->
-            <div class="py-1.5 px-1 rounded transition ${
-              isCompleted 
-                ? 'bg-emerald-700 text-white shadow-sm' 
-                : 'bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500'
-            }">
-              <div>${t.stage3Label}</div>
-            </div>
-          </div>
+          <!-- Visual Progress -->
+          ${progressHtml}
 
           <!-- Stage Actions -->
           <div class="pt-1 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
-            
-            ${isPending ? `
-              <div class="text-[11px] font-mono text-slate-500">
-                ${isAr ? 'الحالة: بانتظار بدء التشغيل' : 'STATUS: WAITING TO START'}
-              </div>
-              <button type="button" class="btn-start-task w-full sm:w-auto px-4 py-2 rounded-lg font-bold text-xs bg-emerald-700 hover:bg-emerald-800 text-white shadow transition active:scale-95 cursor-pointer" data-id="${task.id || task._id}">
-                <span>${t.btnStartTask}</span>
-              </button>
-            ` : ''}
-
-            ${isInProgress ? `
-              <div class="text-xs font-mono font-bold text-amber-700 dark:text-amber-400">
-                ${t.taskStartedAt} <span class="underline">${escapeHtml(displayStarted || displayTime)}</span>
-              </div>
-              <button type="button" class="btn-finish-task w-full sm:w-auto px-4 py-2 rounded-lg font-bold text-xs bg-[#1e2540] hover:bg-[#141a2e] dark:bg-amber-600 dark:hover:bg-amber-500 text-white shadow transition active:scale-95 cursor-pointer" data-id="${task.id || task._id}">
-                <span>${t.btnFinishTask}</span>
-              </button>
-            ` : ''}
+            ${actionsHtml}
 
             ${isCompleted ? `
               <div class="w-full flex flex-wrap items-center justify-between gap-2 p-2.5 bg-emerald-50/50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900 rounded-lg">
-                <div class="flex items-center space-x-3 rtl:space-x-reverse text-xs font-mono text-emerald-900 dark:text-emerald-200">
-                  <span>${isAr ? 'البدء' : 'START'}: ${escapeHtml(displayStarted || '-')}</span>
-                  <span>|</span>
-                  <span>${isAr ? 'الانتهاء' : 'FINISH'}: <strong class="text-emerald-700 dark:text-emerald-400">${escapeHtml(displayFinished || '-')}</strong></span>
-                </div>
+                ${isKnead ? `
+                  <div class="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs font-mono text-emerald-900 dark:text-emerald-200">
+                    <span>${isAr ? 'بدء العجن' : 'Knead'}: <strong>${escapeHtml(displayKneading || displayStarted || '-')}</strong></span>
+                    <span class="text-emerald-400">•</span>
+                    <span>${isAr ? 'دخول الفرن' : 'Oven'}: <strong>${escapeHtml(displayOven || '-')}</strong></span>
+                    <span class="text-emerald-400">•</span>
+                    <span>${isAr ? 'مرحلة الطحن' : 'Milling'}: <strong>${escapeHtml(displayMilling || '-')}</strong></span>
+                    <span class="text-emerald-400">•</span>
+                    <span>${isAr ? 'الانتهاء' : 'Finish'}: <strong class="text-emerald-700 dark:text-emerald-400">${escapeHtml(displayFinished || '-')}</strong></span>
+                  </div>
+                ` : `
+                  <div class="flex items-center space-x-3 rtl:space-x-reverse text-xs font-mono text-emerald-900 dark:text-emerald-200">
+                    <span>${isAr ? 'البدء' : 'START'}: ${escapeHtml(displayStarted || '-')}</span>
+                    <span>|</span>
+                    <span>${isAr ? 'الانتهاء' : 'FINISH'}: <strong class="text-emerald-700 dark:text-emerald-400">${escapeHtml(displayFinished || '-')}</strong></span>
+                  </div>
+                `}
                 <span class="text-[10px] font-mono font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
                   ${t.taskCompletedLocked}
                 </span>
               </div>
             ` : ''}
-
           </div>
 
         </div>
@@ -2018,7 +2206,7 @@
       });
       const total = workerRecords.length;
       const completed = workerRecords.filter(r => r.status === 'completed');
-      const inProgress = workerRecords.filter(r => r.status === 'in_progress');
+      const inProgress = workerRecords.filter(r => r.status && r.status !== 'pending' && r.status !== 'completed');
 
       const durations = completed
         .map(r => computeDurationSeconds(r.startedAt || r.time, r.finishedAt))
@@ -2131,7 +2319,7 @@
     if (filtered.length === 0) {
       tbody.innerHTML = `
         <tr>
-          <td colspan="10" class="py-6 text-center text-slate-400 font-mono text-xs">
+          <td colspan="11" class="py-6 text-center text-slate-400 font-mono text-xs">
             ${records.length === 0 ? t.adminEmpty : t.adminFilterEmpty}
           </td>
         </tr>
@@ -2139,34 +2327,99 @@
       return;
     }
 
-    const stageBadges = isAr ? {
-      pending: '<span class="px-2.5 py-0.5 rounded text-xs font-bold bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700">قيد الانتظار</span>',
-      in_progress: '<span class="px-2.5 py-0.5 rounded text-xs font-bold bg-amber-50 text-amber-900 dark:bg-amber-950/80 dark:text-amber-200 border border-amber-300 dark:border-amber-700">قيد التشغيل</span>',
-      completed: '<span class="px-2.5 py-0.5 rounded text-xs font-bold bg-emerald-50 text-emerald-900 dark:bg-emerald-950/80 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700">مكتمل</span>'
-    } : {
-      pending: '<span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-300 dark:border-slate-700">PENDING</span>',
-      in_progress: '<span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-50 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-800">IN PROGRESS</span>',
-      completed: '<span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">COMPLETED</span>'
-    };
+    tbody.innerHTML = filtered.map(r => {
+      const isKnead = isKneadingTask(r.task);
+      const currentStatus = r.status || 'pending';
 
-    tbody.innerHTML = filtered.map(r => `
-      <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition">
-        <td class="py-2.5 px-3 text-slate-600 dark:text-slate-400 font-mono">${escapeHtml(formatDisplayDate(r.date, currentLang))}</td>
-        <td class="py-2.5 px-3 font-mono text-slate-700 dark:text-slate-300">${escapeHtml(formatDisplayTime(r.time, currentLang))}</td>
-        <td class="py-2.5 px-3 font-mono font-bold text-[#1e2540] dark:text-[#d4aa65]">${escapeHtml(getWorkerDisplayName(r.worker, currentLang))}</td>
-        <td class="py-2.5 px-3 font-semibold text-slate-900 dark:text-slate-100">${escapeHtml(r.task)}</td>
-        <td class="py-2.5 px-3 text-slate-700 dark:text-slate-300 font-mono">${escapeHtml(r.product || '-')}</td>
-        <td class="py-2.5 px-3 text-right rtl:text-left font-mono font-bold text-slate-900 dark:text-slate-100">${escapeHtml(formatDisplayQuantity(r.quantity, r.unit, currentLang))}</td>
-        <td class="py-2.5 px-3 text-center">${stageBadges[r.status] || stageBadges.pending}</td>
-        <td class="py-2.5 px-3 text-center font-mono text-slate-600 dark:text-slate-400">${escapeHtml(formatDisplayTime(r.startedAt, currentLang))}</td>
-        <td class="py-2.5 px-3 text-center font-mono font-bold text-emerald-700 dark:text-emerald-400">${escapeHtml(formatDisplayTime(r.finishedAt, currentLang))}</td>
-        <td class="py-2.5 px-3 text-center">
-          <button class="delete-record-btn text-[11px] text-rose-600 dark:text-rose-400 hover:text-rose-800 font-mono font-semibold px-2 py-0.5 rounded hover:bg-rose-50 dark:hover:bg-rose-950/40" data-id="${r.id || r._id}">
-            ${t.btnDelete}
-          </button>
-        </td>
-      </tr>
-    `).join('');
+      const kneadingBadges = isAr ? {
+        pending: '<span class="px-2 py-0.5 rounded text-[11px] font-bold bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700">1. قيد الانتظار</span>',
+        kneading: '<span class="px-2 py-0.5 rounded text-[11px] font-bold bg-amber-50 text-amber-900 dark:bg-amber-950/80 dark:text-amber-200 border border-amber-300 dark:border-amber-700">2. بدء عجن</span>',
+        oven: '<span class="px-2 py-0.5 rounded text-[11px] font-bold bg-orange-50 text-orange-900 dark:bg-orange-950/80 dark:text-orange-200 border border-orange-300 dark:border-orange-700">3. دخول الفرن</span>',
+        milling: '<span class="px-2 py-0.5 rounded text-[11px] font-bold bg-indigo-50 text-indigo-900 dark:bg-indigo-950/80 dark:text-indigo-200 border border-indigo-300 dark:border-indigo-700">4. مرحلة الطحن</span>',
+        completed: '<span class="px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-50 text-emerald-900 dark:bg-emerald-950/80 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700">5. مكتمل</span>',
+        in_progress: '<span class="px-2 py-0.5 rounded text-[11px] font-bold bg-amber-50 text-amber-900 dark:bg-amber-950/80 dark:text-amber-200 border border-amber-300 dark:border-amber-700">2. بدء عجن</span>'
+      } : {
+        pending: '<span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-300 dark:border-slate-700">1. PENDING</span>',
+        kneading: '<span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-50 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-800">2. KNEADING</span>',
+        oven: '<span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-orange-50 text-orange-800 dark:bg-orange-950/60 dark:text-orange-300 border border-orange-300 dark:border-orange-800">3. OVEN</span>',
+        milling: '<span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-indigo-50 text-indigo-800 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-800">4. MILLING</span>',
+        completed: '<span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">5. COMPLETED</span>',
+        in_progress: '<span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-50 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-800">2. KNEADING</span>'
+      };
+
+      const genericBadges = isAr ? {
+        pending: '<span class="px-2 py-0.5 rounded text-[11px] font-bold bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700">1. قيد الانتظار</span>',
+        in_progress: '<span class="px-2 py-0.5 rounded text-[11px] font-bold bg-amber-50 text-amber-900 dark:bg-amber-950/80 dark:text-amber-200 border border-amber-300 dark:border-amber-700">2. قيد التشغيل</span>',
+        completed: '<span class="px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-50 text-emerald-900 dark:bg-emerald-950/80 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700">3. مكتمل</span>',
+        kneading: '<span class="px-2 py-0.5 rounded text-[11px] font-bold bg-amber-50 text-amber-900 dark:bg-amber-950/80 dark:text-amber-200 border border-amber-300 dark:border-amber-700">2. قيد التشغيل</span>'
+      } : {
+        pending: '<span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-300 dark:border-slate-700">1. PENDING</span>',
+        in_progress: '<span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-50 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-800">2. IN PROGRESS</span>',
+        completed: '<span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">3. COMPLETED</span>',
+        kneading: '<span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-50 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-800">2. IN PROGRESS</span>'
+      };
+
+      const badgeHtml = isKnead 
+        ? (kneadingBadges[r.status] || kneadingBadges.pending) 
+        : (genericBadges[r.status] || genericBadges.pending);
+
+      return `
+        <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition">
+          <td class="py-2.5 px-3 text-slate-600 dark:text-slate-400 font-mono">${escapeHtml(formatDisplayDate(r.date, currentLang))}</td>
+          <td class="py-2.5 px-3 font-mono text-slate-700 dark:text-slate-300">${escapeHtml(formatDisplayTime(r.time, currentLang))}</td>
+          <td class="py-2.5 px-3 font-mono font-bold text-[#1e2540] dark:text-[#d4aa65]">${escapeHtml(getWorkerDisplayName(r.worker, currentLang))}</td>
+          <td class="py-2.5 px-3 font-semibold text-slate-900 dark:text-slate-100">
+            ${escapeHtml(r.task)}
+            ${isKnead ? `<span class="block text-[10px] font-mono font-normal text-amber-600 dark:text-amber-400">${isAr ? 'خط العجن (٣ مراحل)' : 'Kneading Line (3 Stages)'}</span>` : ''}
+          </td>
+          <td class="py-2.5 px-3 text-slate-700 dark:text-slate-300 font-mono">${escapeHtml(r.product || '-')}</td>
+          <td class="py-2.5 px-3 text-right rtl:text-left font-mono font-bold text-slate-900 dark:text-slate-100">${escapeHtml(formatDisplayQuantity(r.quantity, r.unit, currentLang))}</td>
+          <td class="py-2.5 px-3 text-slate-800 dark:text-slate-200 text-xs min-w-[220px] max-w-[380px]">
+            ${r.notes ? `
+              <div class="px-2.5 py-1.5 rounded-lg bg-amber-50/90 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-800/60 text-amber-950 dark:text-amber-200 text-xs leading-relaxed font-sans whitespace-normal break-words shadow-2xs">
+                ${escapeHtml(r.notes)}
+              </div>
+            ` : `<span class="text-slate-400 font-mono">-</span>`}
+          </td>
+          <td class="py-2.5 px-3 text-center">
+            ${badgeHtml}
+          </td>
+          <td class="py-2 px-3 text-center">
+            ${isKnead ? `
+              <div class="inline-flex flex-col items-start text-xs font-mono gap-0.5 text-right rtl:text-right">
+                ${(r.kneadingAt || r.startedAt) ? `
+                  <div class="text-[11px] whitespace-nowrap">
+                    <span class="font-bold text-amber-700 dark:text-amber-400">${isAr ? 'بدء عجن:' : 'Knead:'}</span> 
+                    <span class="text-slate-800 dark:text-slate-200">${escapeHtml(formatDisplayTime(r.kneadingAt || r.startedAt, currentLang))}</span>
+                  </div>
+                ` : ''}
+                ${r.ovenAt ? `
+                  <div class="text-[11px] whitespace-nowrap">
+                    <span class="font-bold text-orange-700 dark:text-orange-400">${isAr ? 'دخول الفرن:' : 'Oven:'}</span> 
+                    <span class="text-slate-800 dark:text-slate-200">${escapeHtml(formatDisplayTime(r.ovenAt, currentLang))}</span>
+                  </div>
+                ` : ''}
+                ${r.millingAt ? `
+                  <div class="text-[11px] whitespace-nowrap">
+                    <span class="font-bold text-indigo-700 dark:text-indigo-400">${isAr ? 'مرحلة الطحن:' : 'Mill:'}</span> 
+                    <span class="text-slate-800 dark:text-slate-200">${escapeHtml(formatDisplayTime(r.millingAt, currentLang))}</span>
+                  </div>
+                ` : ''}
+                ${(!r.kneadingAt && !r.startedAt && !r.ovenAt && !r.millingAt) ? `<span class="text-slate-400 font-mono">-</span>` : ''}
+              </div>
+            ` : `
+              <span class="font-mono text-slate-600 dark:text-slate-400">${escapeHtml(formatDisplayTime(r.startedAt, currentLang))}</span>
+            `}
+          </td>
+          <td class="py-2.5 px-3 text-center font-mono font-bold text-emerald-700 dark:text-emerald-400">${escapeHtml(formatDisplayTime(r.finishedAt, currentLang))}</td>
+          <td class="py-2.5 px-3 text-center">
+            <button class="delete-record-btn text-[11px] text-rose-600 dark:text-rose-400 hover:text-rose-800 font-mono font-semibold px-2 py-0.5 rounded hover:bg-rose-50 dark:hover:bg-rose-950/40" data-id="${r.id || r._id}">
+              ${t.btnDelete}
+            </button>
+          </td>
+        </tr>
+      `;
+    }).join('');
   }
 
   // Custom Delete Modal Handler
@@ -2253,9 +2506,12 @@
     const isRtl = currentLang === 'ar';
 
     const stageNames = {
-      pending: isRtl ? 'قيد الانتظار' : 'Pending',
-      in_progress: isRtl ? 'قيد التشغيل' : 'In Progress',
-      completed: isRtl ? 'مكتمل' : 'Completed'
+      pending: isRtl ? '1. قيد الانتظار' : 'Pending',
+      kneading: isRtl ? '2. بدء عجن' : 'Kneading',
+      oven: isRtl ? '3. دخول الفرن' : 'Oven',
+      milling: isRtl ? '4. مرحلة الطحن' : 'Milling',
+      completed: isRtl ? '5. مكتمل' : 'Completed',
+      in_progress: isRtl ? 'قيد التشغيل' : 'In Progress'
     };
 
     const excelHtml = `
@@ -2290,10 +2546,10 @@
       <body>
         <table>
           <tr>
-            <td colspan="10" class="title">${isRtl ? 'سجل عمليات الإنتاج اليومي' : 'Manufacturing Production Log'}</td>
+            <td colspan="11" class="title">${isRtl ? 'سجل عمليات الإنتاج اليومي' : 'Manufacturing Production Log'}</td>
           </tr>
           <tr>
-            <td colspan="5" class="meta">${isRtl ? 'تاريخ التصدير:' : 'Exported:'} ${todayStr} ${timeNow}</td>
+            <td colspan="6" class="meta">${isRtl ? 'تاريخ التصدير:' : 'Exported:'} ${todayStr} ${timeNow}</td>
             <td colspan="5" class="meta" style="text-align: right;">${isRtl ? 'المستخدم:' : 'User:'} ${currentUser ? currentUser.username : 'admin'}</td>
           </tr>
           <tr></tr>
@@ -2305,8 +2561,9 @@
             <th class="th-main">${isRtl ? 'العملية' : 'Operation'}</th>
             <th class="th-main">${isRtl ? 'التشغيلة / المنتج' : 'Batch / Product'}</th>
             <th class="th-main">${isRtl ? 'الكمية' : 'Quantity'}</th>
+            <th class="th-main">${isRtl ? 'الملاحظات' : 'Notes'}</th>
             <th class="th-main">${isRtl ? 'الحالة' : 'Status'}</th>
-            <th class="th-main">${isRtl ? 'بدء التنفيذ' : 'Started'}</th>
+            <th class="th-main">${isRtl ? 'بدء التنفيذ / المراحل' : 'Started / Stages'}</th>
             <th class="th-main">${isRtl ? 'الانتهاء' : 'Finished'}</th>
           </tr>
           ${filtered.map((r, i) => `
@@ -2318,8 +2575,13 @@
               <td class="cell">${escapeHtml(r.task)}</td>
               <td class="cell">${escapeHtml(r.product || '-')}</td>
               <td class="cell cell-qty">${escapeHtml(formatDisplayQuantity(r.quantity, r.unit, currentLang))}</td>
+              <td class="cell">${escapeHtml(r.notes || '-')}</td>
               <td class="cell cell-center">${stageNames[r.status] || stageNames.pending}</td>
-              <td class="cell cell-center">${escapeHtml(formatDisplayTime(r.startedAt, currentLang))}</td>
+              <td class="cell cell-center">${isKneadingTask(r.task) ? ([
+                (r.kneadingAt || r.startedAt) ? `${isRtl ? 'عجن' : 'Knead'}: ${formatDisplayTime(r.kneadingAt || r.startedAt, currentLang)}` : null,
+                r.ovenAt ? `${isRtl ? 'فرن' : 'Oven'}: ${formatDisplayTime(r.ovenAt, currentLang)}` : null,
+                r.millingAt ? `${isRtl ? 'طحن' : 'Mill'}: ${formatDisplayTime(r.millingAt, currentLang)}` : null
+              ].filter(Boolean).join(' | ') || '-') : escapeHtml(formatDisplayTime(r.startedAt, currentLang))}</td>
               <td class="cell cell-center" style="font-weight: bold; color: #15803d;">${escapeHtml(formatDisplayTime(r.finishedAt, currentLang))}</td>
             </tr>
           `).join('')}
@@ -2345,7 +2607,7 @@
       return;
     }
 
-    const headers = ['#', 'Date', 'Time', 'Operator', 'Operation', 'Batch_Product', 'Quantity', 'Status', 'StartedAt', 'FinishedAt'];
+    const headers = ['#', 'Date', 'Time', 'Operator', 'Operation', 'Batch_Product', 'Quantity', 'Notes', 'Status', 'StartedAt', 'FinishedAt'];
     const rows = filtered.map((r, i) => [
       i + 1,
       r.date,
@@ -2354,6 +2616,7 @@
       `"${(r.task || '').replace(/"/g, '""')}"`,
       `"${(r.product || '').replace(/"/g, '""')}"`,
       `"${(r.quantity || '').replace(/"/g, '""')}"`,
+      `"${(r.notes || '').replace(/"/g, '""')}"`,
       r.status || 'pending',
       r.startedAt || '',
       r.finishedAt || ''
@@ -2383,9 +2646,12 @@
     const isRtl = currentLang === 'ar';
 
     const stageNames = {
-      pending: isRtl ? 'قيد الانتظار' : 'Pending',
-      in_progress: isRtl ? 'قيد التشغيل' : 'In Progress',
-      completed: isRtl ? 'مكتمل ومغلق' : 'Completed'
+      pending: isRtl ? '1. قيد الانتظار' : 'Pending',
+      kneading: isRtl ? '2. بدء عجن' : 'Kneading',
+      oven: isRtl ? '3. دخول الفرن' : 'Oven',
+      milling: isRtl ? '4. مرحلة الطحن' : 'Milling',
+      completed: isRtl ? '5. مكتمل ومغلق' : 'Completed',
+      in_progress: isRtl ? 'قيد التشغيل' : 'In Progress'
     };
 
     const printWin = window.open('', '_blank');
@@ -2437,6 +2703,7 @@
               <th>${t.thTask}</th>
               <th>${t.thProduct}</th>
               <th class="center">${t.thQty}</th>
+              <th>${t.thNotes}</th>
               <th class="center">${t.thStatus}</th>
               <th class="center">${t.thStart}</th>
               <th class="center">${t.thFinish}</th>
@@ -2452,6 +2719,7 @@
                 <td>${escapeHtml(r.task)}</td>
                 <td class="font-mono">${escapeHtml(r.product || '-')}</td>
                 <td class="qty font-mono">${escapeHtml(formatDisplayQuantity(r.quantity, r.unit, currentLang))}</td>
+                <td class="font-mono">${escapeHtml(r.notes || '-')}</td>
                 <td class="center font-mono"><strong>${stageNames[r.status] || stageNames.pending}</strong></td>
                 <td class="center font-mono">${escapeHtml(formatDisplayTime(r.startedAt, currentLang))}</td>
                 <td class="center font-mono font-bold">${escapeHtml(formatDisplayTime(r.finishedAt, currentLang))}</td>
@@ -3058,21 +3326,35 @@
     const workerForm = document.getElementById('worker-form');
     if (workerForm) workerForm.addEventListener('submit', handleWorkerSubmit);
 
-    // Worker Stage Action Delegation (Start / Finish buttons)
+    // Worker Stage Action Delegation (Start / Oven / Milling / Finish buttons)
     const workerTasksList = document.getElementById('worker-tasks-list');
     if (workerTasksList) {
       workerTasksList.addEventListener('click', (e) => {
         const startBtn = e.target.closest('.btn-start-task');
         if (startBtn) {
           const id = startBtn.getAttribute('data-id');
-          startTask(id);
+          advanceTaskStatus(id, 'kneading');
+          return;
+        }
+
+        const ovenBtn = e.target.closest('.btn-oven-task');
+        if (ovenBtn) {
+          const id = ovenBtn.getAttribute('data-id');
+          advanceTaskStatus(id, 'oven');
+          return;
+        }
+
+        const millingBtn = e.target.closest('.btn-milling-task');
+        if (millingBtn) {
+          const id = millingBtn.getAttribute('data-id');
+          advanceTaskStatus(id, 'milling');
           return;
         }
 
         const finishBtn = e.target.closest('.btn-finish-task');
         if (finishBtn) {
           const id = finishBtn.getAttribute('data-id');
-          finishTask(id);
+          advanceTaskStatus(id, 'completed');
           return;
         }
       });
@@ -3159,7 +3441,7 @@
       });
     }
 
-    // Supervisor Table Delete Delegation
+    // Supervisor Table Action Delegation (Delete)
     const adminTbody = document.getElementById('admin-table-body');
     if (adminTbody) {
       adminTbody.addEventListener('click', (e) => {

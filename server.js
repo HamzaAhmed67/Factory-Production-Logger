@@ -86,11 +86,15 @@ const logSchema = new mongoose.Schema({
   weight: { type: String, default: '', trim: true },
   unit: { type: String, default: 'kg', trim: true },
   quantity: { type: String, required: true, trim: true },
-  status: { type: String, enum: ['pending', 'in_progress', 'completed'], default: 'pending' },
+  status: { type: String, enum: ['pending', 'kneading', 'oven', 'milling', 'completed', 'in_progress'], default: 'pending' },
   startedAt: { type: String, default: null },
   finishedAt: { type: String, default: null },
+  kneadingAt: { type: String, default: null },
+  ovenAt: { type: String, default: null },
+  millingAt: { type: String, default: null },
   date: { type: String, required: true },
   time: { type: String, required: true },
+  notes: { type: String, default: '', trim: true },
   assignedBy: { type: String, default: null, trim: true },
   createdAt: { type: Date, default: Date.now }
 });
@@ -178,7 +182,7 @@ app.get('/api/logs', async (req, res) => {
 
 app.post('/api/logs', async (req, res) => {
   try {
-    let { worker, task, product, weight, unit, quantity, status, startedAt, finishedAt, date, time, assignedBy } = req.body;
+    let { worker, task, product, weight, unit, quantity, status, startedAt, finishedAt, kneadingAt, ovenAt, millingAt, date, time, assignedBy, notes } = req.body;
     if (!quantity && weight) {
       quantity = `${weight} ${unit || 'kg'}`;
     }
@@ -196,6 +200,10 @@ app.post('/api/logs', async (req, res) => {
       status: status || 'pending',
       startedAt: startedAt || null,
       finishedAt: finishedAt || null,
+      kneadingAt: kneadingAt || null,
+      ovenAt: ovenAt || null,
+      millingAt: millingAt || null,
+      notes: notes || '',
       date: date || new Date().toISOString().slice(0, 10),
       time: time || new Date().toTimeString().slice(0, 8),
       assignedBy: assignedBy || null,
@@ -220,26 +228,49 @@ app.post('/api/logs', async (req, res) => {
 app.patch('/api/logs/:id/status', async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, timestamp } = req.body;
+    const { status, timestamp, adminOverride } = req.body;
+
+    const allowedStatuses = ['pending', 'kneading', 'oven', 'milling', 'in_progress', 'completed'];
+    if (!allowedStatuses.includes(status)) {
+      return res.status(400).json({ error: `Invalid status: ${status}` });
+    }
 
     const validTransitions = {
-      'pending': ['in_progress'],
-      'in_progress': ['completed'],
+      'pending': ['kneading', 'in_progress'],
+      'kneading': ['oven', 'completed'],
+      'oven': ['milling', 'completed'],
+      'milling': ['completed'],
+      'in_progress': ['oven', 'milling', 'completed'],
       'completed': []
     };
+
+    const timeNow = timestamp || new Date().toTimeString().slice(0, 8);
 
     if (isMongo()) {
       const log = await Log.findById(id);
       if (!log) return res.status(404).json({ error: 'Log not found' });
       const current = log.status || 'pending';
-      if (!validTransitions[current] || !validTransitions[current].includes(status)) {
+      if (!adminOverride && (!validTransitions[current] || !validTransitions[current].includes(status))) {
         return res.status(400).json({ error: `Cannot transition from ${current} to ${status}` });
       }
       log.status = status;
-      if (status === 'in_progress' && !log.startedAt) {
-        log.startedAt = timestamp || new Date().toTimeString().slice(0, 8);
-      } else if (status === 'completed' && !log.finishedAt) {
-        log.finishedAt = timestamp || new Date().toTimeString().slice(0, 8);
+      if (status === 'kneading') {
+        log.kneadingAt = timeNow;
+        if (!log.startedAt) log.startedAt = log.kneadingAt;
+      } else if (status === 'oven') {
+        log.ovenAt = timeNow;
+      } else if (status === 'milling') {
+        log.millingAt = timeNow;
+      } else if (status === 'in_progress') {
+        if (!log.startedAt) log.startedAt = timeNow;
+      } else if (status === 'completed') {
+        log.finishedAt = timeNow;
+      } else if (status === 'pending' && adminOverride) {
+        log.startedAt = null;
+        log.finishedAt = null;
+        log.kneadingAt = null;
+        log.ovenAt = null;
+        log.millingAt = null;
       }
       await log.save();
       return res.json(log);
@@ -249,14 +280,27 @@ app.patch('/api/logs/:id/status', async (req, res) => {
     const log = data.logs.find((l) => l.id === id);
     if (!log) return res.status(404).json({ error: 'Log not found' });
     const current = log.status || 'pending';
-    if (!validTransitions[current] || !validTransitions[current].includes(status)) {
+    if (!adminOverride && (!validTransitions[current] || !validTransitions[current].includes(status))) {
       return res.status(400).json({ error: `Cannot transition from ${current} to ${status}` });
     }
     log.status = status;
-    if (status === 'in_progress' && !log.startedAt) {
-      log.startedAt = timestamp || new Date().toTimeString().slice(0, 8);
-    } else if (status === 'completed' && !log.finishedAt) {
-      log.finishedAt = timestamp || new Date().toTimeString().slice(0, 8);
+    if (status === 'kneading') {
+      log.kneadingAt = timeNow;
+      if (!log.startedAt) log.startedAt = log.kneadingAt;
+    } else if (status === 'oven') {
+      log.ovenAt = timeNow;
+    } else if (status === 'milling') {
+      log.millingAt = timeNow;
+    } else if (status === 'in_progress') {
+      if (!log.startedAt) log.startedAt = timeNow;
+    } else if (status === 'completed') {
+      log.finishedAt = timeNow;
+    } else if (status === 'pending' && adminOverride) {
+      log.startedAt = null;
+      log.finishedAt = null;
+      log.kneadingAt = null;
+      log.ovenAt = null;
+      log.millingAt = null;
     }
     writeLocalData(data);
     res.json(log);

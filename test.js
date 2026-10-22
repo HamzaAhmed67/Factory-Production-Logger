@@ -33,7 +33,8 @@ test('API Integration Tests (Stdlib)', async (t) => {
       body: JSON.stringify({
         worker: 'Ahmed',
         task: 'عجن',
-        quantity: '50 kg'
+        quantity: '50 kg',
+        notes: 'يرجى التأكد من درجة حرارة الفرن'
       })
     });
     assert.equal(res.status, 201);
@@ -41,6 +42,7 @@ test('API Integration Tests (Stdlib)', async (t) => {
     assert.equal(body.worker, 'Ahmed');
     assert.equal(body.task, 'عجن');
     assert.equal(body.quantity, '50 kg');
+    assert.equal(body.notes, 'يرجى التأكد من درجة حرارة الفرن');
     assert.ok(body.id);
     createdId = body.id;
   });
@@ -100,6 +102,99 @@ test('API Integration Tests (Stdlib)', async (t) => {
       body: JSON.stringify({ status: 'in_progress' })
     });
     assert.equal(stepBackDone.status, 400);
+  });
+
+  await t.test('PATCH /api/logs/:id/status transitions through full 5-stage production line: pending -> kneading -> oven -> milling -> completed', async () => {
+    // Create new record for multi-stage test
+    const createRes = await request(server, '/api/logs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ worker: 'Ahmed', task: 'عجن وتصنيع', quantity: '100 kg' })
+    });
+    const { id: stageTestId } = await createRes.json();
+
+    // 1. Pending -> Kneading
+    const toKneading = await request(server, `/api/logs/${stageTestId}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'kneading', timestamp: '11:00:00' })
+    });
+    assert.equal(toKneading.status, 200);
+    const bodyKnead = await toKneading.json();
+    assert.equal(bodyKnead.status, 'kneading');
+    assert.equal(bodyKnead.startedAt, '11:00:00');
+    assert.equal(bodyKnead.kneadingAt, '11:00:00');
+
+    // 2. Kneading -> Oven
+    const toOven = await request(server, `/api/logs/${stageTestId}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'oven', timestamp: '11:20:00' })
+    });
+    assert.equal(toOven.status, 200);
+    const bodyOven = await toOven.json();
+    assert.equal(bodyOven.status, 'oven');
+    assert.equal(bodyOven.ovenAt, '11:20:00');
+
+    // 3. Oven -> Milling
+    const toMilling = await request(server, `/api/logs/${stageTestId}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'milling', timestamp: '11:45:00' })
+    });
+    assert.equal(toMilling.status, 200);
+    const bodyMill = await toMilling.json();
+    assert.equal(bodyMill.status, 'milling');
+    assert.equal(bodyMill.millingAt, '11:45:00');
+
+    // 4. Milling -> Completed
+    const toCompleted = await request(server, `/api/logs/${stageTestId}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'completed', timestamp: '12:00:00' })
+    });
+    assert.equal(toCompleted.status, 200);
+    const bodyDone = await toCompleted.json();
+    assert.equal(bodyDone.status, 'completed');
+    assert.equal(bodyDone.finishedAt, '12:00:00');
+    assert.equal(bodyDone.kneadingAt, '11:00:00');
+    assert.equal(bodyDone.ovenAt, '11:20:00');
+    assert.equal(bodyDone.millingAt, '11:45:00');
+
+    // Cleanup
+    await request(server, `/api/logs/${stageTestId}`, { method: 'DELETE' });
+  });
+
+  await t.test('PATCH /api/logs/:id/status allows adminOverride to set or reset any stage directly', async () => {
+    const createRes = await request(server, '/api/logs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ worker: 'Ahmed', task: 'عجن', quantity: '50 kg' })
+    });
+    const { id: testLogId } = await createRes.json();
+
+    // Admin sets directly to oven stage
+    const resOven = await request(server, `/api/logs/${testLogId}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'oven', timestamp: '12:30:00', adminOverride: true })
+    });
+    assert.equal(resOven.status, 200);
+    const bodyOven = await resOven.json();
+    assert.equal(bodyOven.status, 'oven');
+
+    // Admin resets back to pending
+    const resReset = await request(server, `/api/logs/${testLogId}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'pending', adminOverride: true })
+    });
+    assert.equal(resReset.status, 200);
+    const bodyReset = await resReset.json();
+    assert.equal(bodyReset.status, 'pending');
+    assert.equal(bodyReset.startedAt, null);
+
+    await request(server, `/api/logs/${testLogId}`, { method: 'DELETE' });
   });
 
   await t.test('DELETE /api/logs/:id removes record', async () => {
