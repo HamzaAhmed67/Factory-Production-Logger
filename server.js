@@ -18,6 +18,27 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname)));
 
+const CAIRO_TZ = 'Africa/Cairo';
+
+function getCairoDateString(date = new Date()) {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: CAIRO_TZ,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).format(date);
+}
+
+function getCairoTimeString(date = new Date()) {
+  return new Intl.DateTimeFormat('en-GB', {
+    timeZone: CAIRO_TZ,
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  }).format(date);
+}
+
 // Local File Storage Fallback (zero downtime if Mongo service is stopped)
 const DATA_DIR = path.join(__dirname, 'data');
 const DATA_FILE = path.join(DATA_DIR, 'production_data.json');
@@ -100,6 +121,8 @@ const logSchema = new mongoose.Schema({
   assignedBy: { type: String, default: null, trim: true },
   targetDurationMinutes: { type: Number, default: null },
   deadline: { type: String, default: null },
+  completedAt: { type: String, default: null },
+  isOverdue: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now }
 });
 
@@ -208,17 +231,23 @@ app.post('/api/logs', async (req, res) => {
       ovenAt: ovenAt || null,
       millingAt: millingAt || null,
       notes: notes || '',
-      date: date || new Date().toISOString().slice(0, 10),
-      time: time || new Date().toTimeString().slice(0, 8),
+      date: date || getCairoDateString(),
+      time: time || getCairoTimeString(),
       assignedBy: assignedBy || null,
       targetDurationMinutes: (targetDurationMinutes != null && !isNaN(Number(targetDurationMinutes))) ? Number(targetDurationMinutes) : null,
       deadline: deadline || null,
+      completedAt: null,
+      isOverdue: false,
       createdAt: new Date()
     };
 
     if (isMongo()) {
-      const log = await Log.create(payload);
-      return res.status(201).json(log);
+      try {
+        const log = await Log.create(payload);
+        return res.status(201).json(log);
+      } catch (mongoErr) {
+        console.warn('Mongo create log failed, falling back to local file:', mongoErr.message);
+      }
     }
 
     const data = readLocalData();
@@ -250,7 +279,7 @@ app.patch('/api/logs/:id/status', async (req, res) => {
       'completed': []
     };
 
-    const timeNow = timestamp || new Date().toTimeString().slice(0, 8);
+    const timeNow = timestamp || getCairoTimeString();
 
     if (isMongo()) {
       const log = await Log.findById(id);
@@ -271,12 +300,17 @@ app.patch('/api/logs/:id/status', async (req, res) => {
         if (!log.startedAt) log.startedAt = timeNow;
       } else if (status === 'completed') {
         log.finishedAt = timeNow;
+        log.completedAt = new Date().toISOString();
       } else if (status === 'pending' && adminOverride) {
         log.startedAt = null;
         log.finishedAt = null;
+        log.completedAt = null;
         log.kneadingAt = null;
         log.ovenAt = null;
         log.millingAt = null;
+      }
+      if (log.deadline && Date.now() > new Date(log.deadline).getTime()) {
+        log.isOverdue = true;
       }
       await log.save();
       return res.json(log);
@@ -301,12 +335,17 @@ app.patch('/api/logs/:id/status', async (req, res) => {
       if (!log.startedAt) log.startedAt = timeNow;
     } else if (status === 'completed') {
       log.finishedAt = timeNow;
+      log.completedAt = new Date().toISOString();
     } else if (status === 'pending' && adminOverride) {
       log.startedAt = null;
       log.finishedAt = null;
+      log.completedAt = null;
       log.kneadingAt = null;
       log.ovenAt = null;
       log.millingAt = null;
+    }
+    if (log.deadline && Date.now() > new Date(log.deadline).getTime()) {
+      log.isOverdue = true;
     }
     writeLocalData(data);
     res.json(log);
@@ -357,15 +396,19 @@ app.post('/api/overtime', async (req, res) => {
     const payload = {
       worker: String(worker).trim(),
       workerName: workerName ? String(workerName).trim() : '',
-      date: date || new Date().toISOString().slice(0, 10),
-      time: time || new Date().toTimeString().slice(0, 8),
+      date: date || getCairoDateString(),
+      time: time || getCairoTimeString(),
       notes: notes ? String(notes).trim() : '',
       createdAt: new Date()
     };
 
     if (isMongo()) {
-      const doc = await Overtime.create(payload);
-      return res.status(201).json(doc);
+      try {
+        const doc = await Overtime.create(payload);
+        return res.status(201).json(doc);
+      } catch (mongoErr) {
+        console.warn('Mongo overtime create failed, falling back to local file:', mongoErr.message);
+      }
     }
 
     const data = readLocalData();

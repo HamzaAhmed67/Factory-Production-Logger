@@ -531,6 +531,50 @@ test('API Integration Tests (Stdlib)', async (t) => {
     });
     assert.equal(delUserRes.status, 200);
   });
+
+  await t.test('Deadline overdue: marks task overdue if deadline passed even when started and completed later', async () => {
+    // 1. Create a task with a deadline in the past
+    const pastDeadline = new Date(Date.now() - 60000).toISOString(); // 1 minute ago
+    const res = await request(server, '/api/logs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        worker: 'Ahmed',
+        task: 'عجن',
+        quantity: '30 kg',
+        deadline: pastDeadline,
+        targetDurationMinutes: 10
+      })
+    });
+    assert.equal(res.status, 201);
+    const created = await res.json();
+    assert.ok(created.id);
+
+    // 2. Start the task after deadline
+    const startRes = await request(server, `/api/logs/${created.id}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'in_progress', timestamp: '12:00:00' })
+    });
+    assert.equal(startRes.status, 200);
+    const startedData = await startRes.json();
+    assert.equal(startedData.isOverdue, true);
+
+    // 3. Complete the task later
+    const doneRes = await request(server, `/api/logs/${created.id}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'completed', timestamp: '14:00:00' })
+    });
+    assert.equal(doneRes.status, 200);
+    const doneData = await doneRes.json();
+    assert.equal(doneData.status, 'completed');
+    assert.equal(doneData.isOverdue, true);
+    assert.ok(doneData.completedAt);
+
+    // Clean up
+    await request(server, `/api/logs/${created.id}`, { method: 'DELETE' });
+  });
 });
 
 

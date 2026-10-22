@@ -9,9 +9,28 @@
 (function () {
   'use strict';
 
-  const API_BASE = (typeof window !== 'undefined' && (window.location.protocol === 'file:' || (window.location.port && window.location.port !== '3000')))
+  const isLocalHost = typeof window !== 'undefined' && (
+    window.location.hostname === 'localhost' ||
+    window.location.hostname === '127.0.0.1' ||
+    window.location.protocol === 'file:'
+  );
+
+  const API_BASE = (typeof window !== 'undefined' && window.location.protocol === 'file:')
     ? 'http://localhost:3000/api'
-    : '/api';
+    : (isLocalHost && window.location.port && window.location.port !== '3000')
+      ? 'http://localhost:3000/api'
+      : '/api';
+
+  function fetchWithTimeout(resource, options = {}) {
+    const { timeout = 6000, ...rest } = options;
+    if (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) {
+      return fetch(resource, { ...rest, signal: AbortSignal.timeout(timeout) });
+    }
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeout);
+    return fetch(resource, { ...rest, signal: controller.signal })
+      .finally(() => clearTimeout(timer));
+  }
 
   // Default fallback users for zero-downtime offline support
   const DEFAULT_USERS = [
@@ -78,7 +97,6 @@
   const USER_SESSION_KEY = 'factory_user_session_v5';
   const REMEMBER_ME_KEY = 'factory_remember_me_v1';
   const REMEMBERED_USER_KEY = 'factory_remembered_username_v1';
-  const OFFLINE_QUEUE_KEY = 'factory_offline_sync_queue_v1';
   const LANG_KEY = 'factory_prod_lang_v1';
   const THEME_KEY = 'factory_prod_theme_v1';
 
@@ -112,8 +130,6 @@
       portalAdminAction: 'Supervisor Sign In →',
       btnBackPortals: 'Back to Portals',
       btnInstallApp: 'Install App',
-      offlineBadge: 'Offline Mode',
-      syncingBadge: 'Syncing',
 
       loginHeading: 'Enterprise Production System',
       loginSubheading: 'Enter credentials for system authentication and authorization',
@@ -206,9 +222,9 @@
       thQty: 'Quantity',
       thNotes: 'Notes',
       thStatus: 'Status',
-      thTimer: 'Target Timer',
+      thTimer: 'Target & Delay',
       thStart: 'Started / Stages',
-      thFinish: 'Finished',
+      thFinish: 'Finished & Duration',
       thAction: 'Action',
       btnDelete: 'Delete',
       lblAssignWorker: 'Target Operator *',
@@ -309,8 +325,6 @@
       portalAdminAction: 'تسجيل دخول المشرفين ←',
       btnBackPortals: 'العودة للبوابات',
       btnInstallApp: 'تثبيت التطبيق',
-      offlineBadge: 'وضع عدم الاتصال',
-      syncingBadge: 'قيد المزامنة',
 
       loginHeading: 'نظام إدارة عمليات الإنتاج',
       loginSubheading: 'أدخل بيانات الاعتماد للمصادقة وتحديد مستوى الصلاحيات',
@@ -403,9 +417,9 @@
       thQty: 'الكمية',
       thNotes: 'الملاحظات',
       thStatus: 'الحالة',
-      thTimer: 'الوقت المحدد والعداد',
+      thTimer: 'الالتزام وتجاوز الوقت',
       thStart: 'وقت البدء / المراحل',
-      thFinish: 'وقت الانتهاء',
+      thFinish: 'الانتهاء والمدة',
       thAction: 'إجراء',
       btnDelete: 'حذف',
       lblAssignWorker: 'المشغل المستهدف *',
@@ -502,11 +516,42 @@
     return str.replace(/[0-9]/g, d => ARABIC_DIGITS[Number(d)]);
   }
 
-  // Helper Date & Time
+  // Timezone & Helper Date & Time
+  const CAIRO_TZ = 'Africa/Cairo';
+
+  function getCairoDateParts(date = new Date()) {
+    const d = date instanceof Date && !isNaN(date.getTime()) ? date : new Date(date);
+    const validDate = isNaN(d.getTime()) ? new Date() : d;
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: CAIRO_TZ,
+      year: 'numeric',
+      month: 'numeric',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: 'numeric',
+      second: 'numeric',
+      hourCycle: 'h23'
+    });
+    const parts = formatter.formatToParts(validDate);
+    const p = {};
+    for (const part of parts) {
+      if (part.type !== 'literal') p[part.type] = Number(part.value);
+    }
+    return {
+      year: p.year,
+      month: p.month, // 1-12
+      day: p.day,
+      hours: p.hour,  // 0-23
+      minutes: p.minute,
+      seconds: p.second
+    };
+  }
+
   function getTodayDateString(date = new Date()) {
-    const y = date.getFullYear();
-    const m = String(date.getMonth() + 1).padStart(2, '0');
-    const d = String(date.getDate()).padStart(2, '0');
+    const { year, month, day } = getCairoDateParts(date);
+    const y = year;
+    const m = String(month).padStart(2, '0');
+    const d = String(day).padStart(2, '0');
     return `${y}-${m}-${d}`;
   }
 
@@ -522,34 +567,34 @@
   // Formats dates as: ١٨ أكتوبر ٢٠٢٦ (in Arabic) or Oct 18, 2026 (in English)
   function formatDisplayDate(dateVal, lang = currentLang) {
     if (!dateVal || dateVal === '-') return '-';
-    let d;
-    if (dateVal instanceof Date) {
-      d = dateVal;
-    } else if (typeof dateVal === 'string') {
+    let day, monthIdx, year;
+
+    if (typeof dateVal === 'string') {
       const clean = localizeDigits(dateVal, 'en').trim();
       const parts = clean.split(/[-/]/);
       if (parts.length === 3) {
         if (parts[0].length === 4) {
-          d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+          year = Number(parts[0]);
+          monthIdx = Number(parts[1]) - 1;
+          day = Number(parts[2]);
         } else if (parts[2].length === 4) {
-          d = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
-        } else {
-          d = new Date(clean);
+          day = Number(parts[0]);
+          monthIdx = Number(parts[1]) - 1;
+          year = Number(parts[2]);
         }
-      } else {
-        d = new Date(clean);
       }
-    } else {
-      d = new Date(dateVal);
     }
 
-    if (isNaN(d.getTime())) {
-      return localizeDigits(String(dateVal), lang);
+    if (year === undefined || isNaN(year) || isNaN(monthIdx) || isNaN(day)) {
+      const d = dateVal instanceof Date ? dateVal : new Date(dateVal);
+      if (isNaN(d.getTime())) {
+        return localizeDigits(String(dateVal), lang);
+      }
+      const c = getCairoDateParts(d);
+      day = c.day;
+      monthIdx = c.month - 1;
+      year = c.year;
     }
-
-    const day = d.getDate();
-    const monthIdx = d.getMonth();
-    const year = d.getFullYear();
 
     if (lang === 'ar') {
       const monthName = AR_MONTHS[monthIdx] || '';
@@ -631,13 +676,13 @@
   }
 
   function getExactTimeString(date = new Date(), lang = currentLang) {
-    const rawHours = date.getHours();
+    const { hours: rawHours, minutes: min, seconds: sec } = getCairoDateParts(date);
     const isPM = rawHours >= 12;
     const ampm = lang === 'ar' ? (isPM ? 'م' : 'ص') : (isPM ? 'PM' : 'AM');
     const hours12 = rawHours % 12 || 12;
     const hours = String(hours12).padStart(2, '0');
-    const minutes = String(date.getMinutes()).padStart(2, '0');
-    const seconds = String(date.getSeconds()).padStart(2, '0');
+    const minutes = String(min).padStart(2, '0');
+    const seconds = String(sec).padStart(2, '0');
     
     // In Arabic: ٠٨:١٨:٠٥ م vs English: 08:18:05 PM
     const formatted = `${hours}:${minutes}:${seconds} ${ampm}`;
@@ -734,7 +779,6 @@
     setText('portal-admin-action', t.portalAdminAction);
     setText('btn-back-portals-text', t.btnBackPortals);
     setText('btn-install-app-text', t.btnInstallApp);
-    updateNetworkStatus();
 
     // Login View
     setText('login-heading', t.loginHeading);
@@ -888,7 +932,7 @@
     // Update Task & Worker Select Options
     ['worker-task-select', 'assign-task-select', 'assign-worker-select', 'admin-filter-worker', 'admin-filter-ot-worker'].forEach(selectId => {
       const sel = document.getElementById(selectId);
-      if (!sel) return;
+      if (!sel || !sel.options) return;
       Array.from(sel.options).forEach(opt => {
         const label = opt.getAttribute(`data-label-${lang}`);
         if (label) opt.textContent = label;
@@ -953,6 +997,54 @@
     }
   }
 
+  // Duration Parsing & Computation
+  // ponytail: assumes same-day timestamps with optional AM/PM or ص/م; upgrade to full ISO date strings if work shifts cross midnight.
+  function parseTimeToSeconds(timeStr) {
+    if (!timeStr) return null;
+    const normalized = localizeDigits(timeStr, 'en').trim();
+    const isPM = /(pm|م)/i.test(normalized);
+    const isAM = /(am|ص)/i.test(normalized);
+    const cleanStr = normalized.replace(/\s*(am|pm|ص|م)/gi, '').trim();
+    const parts = cleanStr.split(':').map(Number);
+    if (parts.length < 2 || parts.some(isNaN)) return null;
+
+    let hours = parts[0];
+    if (isPM && hours < 12) hours += 12;
+    if (isAM && hours === 12) hours = 0;
+
+    return hours * 3600 + parts[1] * 60 + (parts[2] || 0);
+  }
+
+  function computeDurationSeconds(startStr, finishStr) {
+    const s = parseTimeToSeconds(startStr);
+    const f = parseTimeToSeconds(finishStr);
+    if (s === null || f === null) return null;
+    let diff = f - s;
+    if (diff < 0) diff += 86400; // shift crossed midnight
+    return diff;
+  }
+
+  function formatDuration(seconds) {
+    if (seconds === null || isNaN(seconds)) return '--';
+    const totalSec = Math.round(seconds);
+    const hrs = Math.floor(totalSec / 3600);
+    const mins = Math.floor((totalSec % 3600) / 60);
+    const secs = totalSec % 60;
+
+    if (currentLang === 'ar') {
+      const hStr = localizeDigits(hrs, 'ar');
+      const mStr = localizeDigits(mins, 'ar');
+      const sStr = localizeDigits(secs, 'ar');
+      if (hrs > 0) return `${hStr} س ${mStr} د`;
+      if (mins > 0) return `${mStr} د ${sStr} ث`;
+      return `${sStr} ث`;
+    } else {
+      if (hrs > 0) return `${hrs}h ${mins}m`;
+      if (mins > 0) return `${mins}m ${secs}s`;
+      return `${secs}s`;
+    }
+  }
+
   // Live Countdown & Target Timers
   function formatCountdownTime(totalSeconds) {
     const abs = Math.abs(totalSeconds);
@@ -963,17 +1055,93 @@
     return `${pad(h)}:${pad(m)}:${pad(s)}`;
   }
 
-  function renderCountdownContent(deadline, status, finishedAt, targetMinutes, lang = currentLang) {
+  function getOverdueSeconds(deadline, completedAt, date, finishedAt) {
+    if (!deadline) return 0;
+    const deadlineMs = new Date(deadline).getTime();
+    if (isNaN(deadlineMs)) return 0;
+
+    let endMs = null;
+    if (completedAt) {
+      const ms = new Date(completedAt).getTime();
+      if (!isNaN(ms)) endMs = ms;
+    }
+    if (!endMs && finishedAt && date) {
+      const cleanDate = localizeDigits(date, 'en').trim();
+      const s = parseTimeToSeconds(finishedAt);
+      if (s !== null) {
+        const parts = cleanDate.split(/[-/]/);
+        if (parts.length === 3) {
+          let y, m, d;
+          if (parts[0].length === 4) {
+            y = Number(parts[0]); m = Number(parts[1]) - 1; d = Number(parts[2]);
+          } else {
+            d = Number(parts[0]); m = Number(parts[1]) - 1; y = Number(parts[2]);
+          }
+          const dt = new Date(y, m, d, 0, 0, s);
+          if (!isNaN(dt.getTime())) endMs = dt.getTime();
+        }
+      }
+    }
+    if (!endMs) endMs = Date.now();
+
+    const diffMs = endMs - deadlineMs;
+    return diffMs > 0 ? Math.floor(diffMs / 1000) : 0;
+  }
+
+  function checkIsDeadlineOverdue(deadline, status, completedAt, explicitOverdue) {
+    if (!deadline) return false;
+    if (explicitOverdue === true || explicitOverdue === 'true') return true;
+    const deadlineMs = new Date(deadline).getTime();
+    if (isNaN(deadlineMs)) return false;
+
+    if (status === 'completed') {
+      if (completedAt) {
+        const compMs = new Date(completedAt).getTime();
+        if (!isNaN(compMs)) return compMs > deadlineMs;
+      }
+      return Date.now() > deadlineMs;
+    }
+
+    return Date.now() > deadlineMs;
+  }
+
+  function renderCountdownContent(deadline, status, finishedAt, targetMinutes, lang = currentLang, isOverdue = false, completedAt = null, startedAt = null) {
     if (!deadline) return '';
     const isAr = lang === 'ar';
     const isCompleted = status === 'completed';
+    const actualDurationSec = (startedAt && finishedAt) ? computeDurationSeconds(startedAt, finishedAt) : null;
 
     if (isCompleted) {
+      if (isOverdue) {
+        const overdueSec = getOverdueSeconds(deadline, completedAt, null, finishedAt);
+        const overdueHuman = formatDuration(overdueSec);
+        const overdueClock = formatCountdownTime(overdueSec);
+        return `
+          <div class="flex flex-col gap-1.5 w-full">
+            <div class="flex items-center flex-wrap gap-2 text-rose-800 dark:text-rose-300 font-mono text-xs font-bold">
+              <span class="w-2.5 h-2.5 rounded-full bg-rose-600 inline-block animate-pulse"></span>
+              <span>${isAr ? '🚨 أُنجز بعد فوات الأوان' : '🚨 Completed Late (Overdue)'}</span>
+              <span class="px-2 py-0.5 rounded font-black tracking-wider text-xs bg-rose-100 dark:bg-rose-950 text-rose-900 dark:text-rose-200 border border-rose-300 dark:border-rose-800">
+                ${isAr ? 'تجاوز الوقت المحدد بـ:' : 'Exceeded deadline by:'} +${overdueHuman} (${overdueClock})
+              </span>
+            </div>
+            <div class="flex items-center flex-wrap gap-x-3 gap-y-1 text-[11px] font-mono text-slate-600 dark:text-slate-400">
+              ${actualDurationSec !== null ? `<span>${isAr ? 'الوقت المستغرق الفعلي:' : 'Actual Time Taken:'} <strong class="text-rose-700 dark:text-rose-400 font-bold">${formatDuration(actualDurationSec)}</strong></span>` : ''}
+              ${targetMinutes ? `<span>${isAr ? 'المدة المحددة كانت:' : 'Target was:'} <strong>${localizeDigits(targetMinutes, lang)} ${isAr ? 'دقيقة' : 'min'}</strong></span>` : ''}
+            </div>
+          </div>
+        `;
+      }
       return `
-        <div class="flex items-center gap-2 text-emerald-800 dark:text-emerald-300 font-mono text-xs font-bold">
-          <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span>
-          <span>${isAr ? 'تم الإنجاز في الوقت المحدد' : 'Completed On Time'}</span>
-          ${targetMinutes ? `<span class="text-[11px] font-normal text-emerald-600 dark:text-emerald-400">(${isAr ? 'المدة المحددة' : 'Target'}: ${localizeDigits(targetMinutes, lang)} ${isAr ? 'دقيقة' : 'min'})</span>` : ''}
+        <div class="flex flex-col gap-1 w-full">
+          <div class="flex items-center gap-2 text-emerald-800 dark:text-emerald-300 font-mono text-xs font-bold">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span>
+            <span>${isAr ? 'تم الإنجاز في الوقت المحدد' : 'Completed On Time'}</span>
+          </div>
+          <div class="flex items-center flex-wrap gap-x-3 gap-y-1 text-[11px] font-mono text-emerald-700 dark:text-emerald-400">
+            ${actualDurationSec !== null ? `<span>${isAr ? 'الوقت المستغرق:' : 'Time Taken:'} <strong>${formatDuration(actualDurationSec)}</strong></span>` : ''}
+            ${targetMinutes ? `<span>(${isAr ? 'المدة المحددة' : 'Target'}: ${localizeDigits(targetMinutes, lang)} ${isAr ? 'دقيقة' : 'min'})</span>` : ''}
+          </div>
         </div>
       `;
     }
@@ -997,26 +1165,34 @@
         ` : ''}
       `;
     } else {
-      const overdueStr = formatCountdownTime(diffSec);
+      const overdueSec = Math.abs(diffSec);
+      const overdueClock = formatCountdownTime(diffSec);
+      const overdueHuman = formatDuration(overdueSec);
       return `
-        <div class="flex items-center flex-wrap gap-2 text-rose-800 dark:text-rose-300 font-mono text-xs font-bold">
-          <span class="inline-block w-2.5 h-2.5 rounded-full bg-rose-600 animate-ping"></span>
-          <span>${isAr ? '🚨 متأخر عن الوقت المحدد بـ:' : '🚨 Overdue by:'}</span>
-          <span class="px-2 py-0.5 rounded font-black tracking-wider text-sm bg-rose-100 dark:bg-rose-950 text-rose-900 dark:text-rose-200 border border-rose-300 dark:border-rose-800 animate-pulse">+${overdueStr}</span>
-        </div>
-        ${targetMinutes ? `
-          <div class="text-[11px] font-mono text-rose-600 dark:text-rose-400 font-bold">
-            ${isAr ? 'تجاوز الوقت المستهدف' : 'Exceeded target deadline'}
+        <div class="flex flex-col gap-1 w-full">
+          <div class="flex items-center flex-wrap gap-2 text-rose-800 dark:text-rose-300 font-mono text-xs font-bold">
+            <span class="inline-block w-2.5 h-2.5 rounded-full bg-rose-600 animate-ping"></span>
+            <span>${isAr ? '🚨 متأخر عن الوقت المحدد بـ:' : '🚨 Overdue by:'}</span>
+            <span class="px-2 py-0.5 rounded font-black tracking-wider text-sm bg-rose-100 dark:bg-rose-950 text-rose-900 dark:text-rose-200 border border-rose-300 dark:border-rose-800 animate-pulse">+${overdueClock} (+${overdueHuman})</span>
           </div>
-        ` : ''}
+          <div class="text-[11px] font-mono text-rose-600 dark:text-rose-400 font-bold flex items-center gap-2">
+            <span>${isAr ? 'تجاوز الوقت المستهدف بـ' : 'Exceeded target deadline by'} +${overdueHuman}</span>
+            ${targetMinutes ? `<span>(${isAr ? 'المحدد كان' : 'Target was'}: ${localizeDigits(targetMinutes, lang)} ${isAr ? 'دقيقة' : 'min'})</span>` : ''}
+          </div>
+        </div>
       `;
     }
   }
 
-  function renderInlineCountdownBadge(deadline, status, lang = currentLang) {
+  function renderInlineCountdownBadge(deadline, status, lang = currentLang, isOverdue = false, completedAt = null, finishedAt = null) {
     if (!deadline) return '';
     const isAr = lang === 'ar';
     if (status === 'completed') {
+      if (isOverdue) {
+        const overdueSec = getOverdueSeconds(deadline, completedAt, null, finishedAt);
+        const overStr = formatDuration(overdueSec);
+        return `<span class="inline-flex items-center gap-1 font-mono font-bold text-rose-800 dark:text-rose-300"><span>🚨</span><span>${isAr ? 'متأخر' : 'Late'}: +${overStr}</span></span>`;
+      }
       return `<span>✅ ${isAr ? 'تم بالموعد' : 'On Time'}</span>`;
     }
     const diffMs = new Date(deadline).getTime() - Date.now();
@@ -1026,26 +1202,79 @@
       const str = formatCountdownTime(diffSec);
       return `<span class="inline-flex items-center gap-1 font-mono font-bold ${isUrgent ? 'text-amber-800 dark:text-amber-300 animate-pulse' : 'text-cyan-800 dark:text-cyan-300'}"><span>⏱️</span><span>${isAr ? 'متبقي' : 'Left'}: ${str}</span></span>`;
     } else {
-      const str = formatCountdownTime(diffSec);
-      return `<span class="inline-flex items-center gap-1 font-mono font-bold text-rose-800 dark:text-rose-300 animate-pulse"><span>🚨</span><span>${isAr ? 'متأخر' : 'Overdue'}: +${str}</span></span>`;
+      const str = formatDuration(Math.abs(diffSec));
+      return `<span class="inline-flex items-center gap-1 font-mono font-bold text-rose-800 dark:text-rose-300 animate-pulse"><span>🚨</span><span>${isAr ? 'تأخير' : 'Overdue'}: +${str}</span></span>`;
     }
   }
 
-  function renderAdminCountdownPill(deadline, status, lang = currentLang) {
+  function renderAdminCountdownPill(deadline, status, lang = currentLang, isOverdue = false, completedAt = null, targetMinutes = null, startedAt = null, finishedAt = null, date = null) {
     if (!deadline) return '<span class="text-slate-400 font-mono text-xs">-</span>';
     const isAr = lang === 'ar';
+    const actualDurationSec = (startedAt && finishedAt) ? computeDurationSeconds(startedAt, finishedAt) : null;
+
     if (status === 'completed') {
-      return `<span class="px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-emerald-50 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300">✓ ${isAr ? 'أُنجز' : 'Done'}</span>`;
+      if (isOverdue) {
+        const overdueSec = getOverdueSeconds(deadline, completedAt, date, finishedAt);
+        const overdueHuman = formatDuration(overdueSec);
+        const overdueClock = formatCountdownTime(overdueSec);
+        return `
+          <div class="inline-flex flex-col items-center justify-center gap-0.5">
+            <span class="px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-rose-50 text-rose-900 dark:bg-rose-950 dark:text-rose-200 border border-rose-300 animate-pulse">
+              🚨 ${isAr ? 'متأخر' : 'Late'} (+${overdueClock})
+            </span>
+            <span class="text-[10px] font-mono font-bold text-rose-700 dark:text-rose-400 whitespace-nowrap">
+              ${isAr ? 'تجاوز بـ:' : 'Exceeded:'} +${overdueHuman}
+            </span>
+            ${actualDurationSec !== null ? `
+              <span class="text-[10px] font-mono text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                ${isAr ? 'استغرق:' : 'Took:'} ${formatDuration(actualDurationSec)}
+              </span>
+            ` : ''}
+          </div>
+        `;
+      }
+      return `
+        <div class="inline-flex flex-col items-center justify-center gap-0.5">
+          <span class="px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-emerald-50 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300">
+            ✓ ${isAr ? 'أُنجز بالموعد' : 'Done On Time'}
+          </span>
+          ${actualDurationSec !== null ? `
+            <span class="text-[10px] font-mono text-emerald-700 dark:text-emerald-400 whitespace-nowrap">
+              ${isAr ? 'استغرق:' : 'Took:'} ${formatDuration(actualDurationSec)}
+            </span>
+          ` : ''}
+        </div>
+      `;
     }
+
     const diffMs = new Date(deadline).getTime() - Date.now();
     const diffSec = Math.floor(diffMs / 1000);
     if (diffSec > 0) {
       const isUrgent = diffSec < 900;
       const str = formatCountdownTime(diffSec);
-      return `<span class="px-2 py-0.5 rounded text-[11px] font-mono font-bold ${isUrgent ? 'bg-amber-50 text-amber-900 dark:bg-amber-950 dark:text-amber-200 border border-amber-300 animate-pulse' : 'bg-cyan-50 text-cyan-900 dark:bg-cyan-950 dark:text-cyan-200 border border-cyan-300'}">⏱ ${str}</span>`;
+      return `
+        <div class="inline-flex flex-col items-center justify-center gap-0.5">
+          <span class="px-2 py-0.5 rounded text-[11px] font-mono font-bold ${isUrgent ? 'bg-amber-50 text-amber-900 dark:bg-amber-950 dark:text-amber-200 border border-amber-300 animate-pulse' : 'bg-cyan-50 text-cyan-900 dark:bg-cyan-950 dark:text-cyan-200 border border-cyan-300'}">
+            ⏱ ${str}
+          </span>
+          ${targetMinutes ? `<span class="text-[10px] font-mono text-slate-500 dark:text-slate-400 whitespace-nowrap">${isAr ? 'المحدد:' : 'Target:'} ${localizeDigits(targetMinutes, lang)} ${isAr ? 'د' : 'm'}</span>` : ''}
+        </div>
+      `;
     } else {
-      const str = formatCountdownTime(diffSec);
-      return `<span class="px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-rose-50 text-rose-900 dark:bg-rose-950 dark:text-rose-200 border border-rose-300 animate-pulse">🚨 +${str}</span>`;
+      const overdueSec = Math.abs(diffSec);
+      const overdueClock = formatCountdownTime(diffSec);
+      const overdueHuman = formatDuration(overdueSec);
+      return `
+        <div class="inline-flex flex-col items-center justify-center gap-0.5">
+          <span class="px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-rose-50 text-rose-900 dark:bg-rose-950 dark:text-rose-200 border border-rose-300 animate-pulse">
+            🚨 +${overdueClock}
+          </span>
+          <span class="text-[10px] font-mono font-bold text-rose-700 dark:text-rose-400 whitespace-nowrap">
+            ${isAr ? 'تجاوز بـ:' : 'Exceeded:'} +${overdueHuman}
+          </span>
+          ${targetMinutes ? `<span class="text-[10px] font-mono text-slate-500 dark:text-slate-400 whitespace-nowrap">${isAr ? 'المحدد:' : 'Target:'} ${localizeDigits(targetMinutes, lang)} ${isAr ? 'د' : 'm'}</span>` : ''}
+        </div>
+      `;
     }
   }
 
@@ -1055,16 +1284,23 @@
       const deadline = el.getAttribute('data-deadline');
       const status = el.getAttribute('data-status');
       const finishedAt = el.getAttribute('data-finished') || '';
+      const startedAt = el.getAttribute('data-started') || '';
       const targetMin = el.getAttribute('data-target-minutes') || '';
+      const completedAt = el.getAttribute('data-completed-at') || '';
+      const overdueAttr = el.getAttribute('data-overdue');
       if (!deadline) return;
 
-      el.innerHTML = renderCountdownContent(deadline, status, finishedAt, targetMin, currentLang);
-
       const isCompleted = status === 'completed';
+      const isOverdue = checkIsDeadlineOverdue(deadline, status, completedAt, overdueAttr);
+
+      el.innerHTML = renderCountdownContent(deadline, status, finishedAt, targetMin, currentLang, isOverdue, completedAt, startedAt);
+
       const diffMs = new Date(deadline).getTime() - Date.now();
       const baseClass = 'task-countdown-box flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-lg border transition-all ';
       if (isCompleted) {
-        el.className = baseClass + 'bg-emerald-50/70 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800/60';
+        el.className = baseClass + (isOverdue 
+          ? 'bg-rose-50/90 dark:bg-rose-950/50 border-rose-300 dark:border-rose-800/80 shadow-xs'
+          : 'bg-emerald-50/70 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800/60');
       } else if (diffMs <= 0) {
         el.className = baseClass + 'bg-rose-50/90 dark:bg-rose-950/50 border-rose-300 dark:border-rose-800/80 shadow-xs';
       } else if (diffMs < 900000) {
@@ -1078,13 +1314,21 @@
     inlineBadges.forEach(el => {
       const deadline = el.getAttribute('data-deadline');
       const status = el.getAttribute('data-status');
+      const completedAt = el.getAttribute('data-completed-at') || '';
+      const finishedAt = el.getAttribute('data-finished') || '';
+      const overdueAttr = el.getAttribute('data-overdue');
       if (!deadline) return;
-      el.innerHTML = renderInlineCountdownBadge(deadline, status, currentLang);
+
       const isCompleted = status === 'completed';
+      const isOverdue = checkIsDeadlineOverdue(deadline, status, completedAt, overdueAttr);
+
+      el.innerHTML = renderInlineCountdownBadge(deadline, status, currentLang, isOverdue, completedAt, finishedAt);
       const diffMs = new Date(deadline).getTime() - Date.now();
       const baseClass = 'worker-inline-countdown px-2 py-0.5 rounded text-[10px] font-mono font-bold border transition-all ';
       if (isCompleted) {
-        el.className = baseClass + 'bg-emerald-50 text-emerald-900 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-200';
+        el.className = baseClass + (isOverdue
+          ? 'bg-rose-50 text-rose-900 border-rose-300 dark:bg-rose-950 dark:text-rose-200 shadow-xs'
+          : 'bg-emerald-50 text-emerald-900 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-200');
       } else if (diffMs <= 0) {
         el.className = baseClass + 'bg-rose-50 text-rose-900 border-rose-300 dark:bg-rose-950 dark:text-rose-200 animate-pulse shadow-xs';
       } else if (diffMs < 900000) {
@@ -1098,8 +1342,15 @@
     pills.forEach(el => {
       const deadline = el.getAttribute('data-deadline');
       const status = el.getAttribute('data-status');
+      const completedAt = el.getAttribute('data-completed-at') || '';
+      const targetMin = el.getAttribute('data-target-minutes') || '';
+      const startedAt = el.getAttribute('data-started-at') || '';
+      const finishedAt = el.getAttribute('data-finished-at') || '';
+      const date = el.getAttribute('data-date') || '';
+      const overdueAttr = el.getAttribute('data-overdue');
       if (!deadline) return;
-      el.innerHTML = renderAdminCountdownPill(deadline, status, currentLang);
+      const isOverdue = checkIsDeadlineOverdue(deadline, status, completedAt, overdueAttr);
+      el.innerHTML = renderAdminCountdownPill(deadline, status, currentLang, isOverdue, completedAt, targetMin, startedAt, finishedAt, date);
     });
   }
 
@@ -1110,16 +1361,24 @@
     const otClockEl = document.getElementById('overtime-live-clock');
 
     function update() {
-      const now = new Date();
-      const timeStr = getExactTimeString(now, currentLang);
-      const isAr = currentLang === 'ar';
-      const dateStr = formatDisplayDate(now, currentLang);
+      try {
+        const now = new Date();
+        const timeStr = getExactTimeString(now, currentLang);
+        const isAr = currentLang === 'ar';
+        const dateStr = formatDisplayDate(now, currentLang);
 
-      if (clockEl) clockEl.textContent = `${timeStr} | ${dateStr}`;
-      if (workerBadge) workerBadge.textContent = `${timeStr} (${isAr ? 'توقيت النظام' : 'SYSTEM TIME'})`;
-      if (otClockEl) otClockEl.textContent = `${timeStr} | ${dateStr}`;
+        if (clockEl) clockEl.textContent = `${timeStr} | ${dateStr}`;
+        if (workerBadge) workerBadge.textContent = `${timeStr} (${isAr ? 'توقيت القاهرة' : 'CAIRO TIME'})`;
+        if (otClockEl) otClockEl.textContent = `${timeStr} | ${dateStr}`;
+      } catch (err) {
+        console.error('Clock tick error:', err);
+      }
 
-      updateLiveCountdowns();
+      try {
+        updateLiveCountdowns();
+      } catch (err) {
+        console.error('Countdowns tick error:', err);
+      }
     }
 
     update();
@@ -1704,7 +1963,7 @@
 
   async function fetchServerRecords() {
     try {
-      const res = await fetch(`${API_BASE}/logs`);
+      const res = await fetchWithTimeout(`${API_BASE}/logs`, { timeout: 4000 });
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data)) {
@@ -1812,11 +2071,12 @@
         saveRecordsLocal();
         renderWorkerTasks();
       } else {
-        addToOfflineQueue({ type: 'create_log', payload: newRecord });
+        const errData = await res.json().catch(() => ({}));
+        showToast(errData.error || (currentLang === 'ar' ? 'فشل حفظ أمر العمل بالخادم' : 'Failed to save work order on server'), true);
       }
     } catch (err) {
-      console.warn('Network error pushing log to backend, queued offline:', err);
-      addToOfflineQueue({ type: 'create_log', payload: newRecord });
+      console.error('Network error pushing log to backend:', err);
+      showToast(currentLang === 'ar' ? 'تعذر الاتصال بالخادم' : 'Server connection error', true);
     }
   }
 
@@ -1908,11 +2168,12 @@
         saveRecordsLocal();
         renderAdminDashboard();
       } else {
-        addToOfflineQueue({ type: 'create_log', payload: newRecord });
+        const errData = await res.json().catch(() => ({}));
+        showToast(errData.error || (currentLang === 'ar' ? 'فشل إسناد المهمة بالخادم' : 'Failed to assign job on server'), true);
       }
     } catch (err) {
-      console.warn('Network error assigning job, queued offline:', err);
-      addToOfflineQueue({ type: 'create_log', payload: newRecord });
+      console.error('Network error assigning job:', err);
+      showToast(currentLang === 'ar' ? 'تعذر الاتصال بالخادم' : 'Server connection error', true);
     }
   }
 
@@ -1937,6 +2198,12 @@
       if (!item.startedAt) item.startedAt = timestamp;
     } else if (newStatus === 'completed') {
       if (!item.finishedAt) item.finishedAt = timestamp;
+      item.completedAt = new Date().toISOString();
+      if (item.deadline && new Date(item.deadline).getTime() <= Date.now()) {
+        item.isOverdue = true;
+      }
+    } else if (item.deadline && new Date(item.deadline).getTime() <= Date.now()) {
+      item.isOverdue = true;
     }
 
     saveRecordsLocal();
@@ -1968,17 +2235,19 @@
           if (updated.millingAt) item.millingAt = updated.millingAt;
           if (updated.startedAt) item.startedAt = updated.startedAt;
           if (updated.finishedAt) item.finishedAt = updated.finishedAt;
+          if (updated.completedAt) item.completedAt = updated.completedAt;
+          if (updated.isOverdue !== undefined) item.isOverdue = updated.isOverdue;
           saveRecordsLocal();
           renderWorkerTasks();
           renderAdminDashboard();
         }
       } else {
-        addToOfflineQueue({ type: 'status_update', id: targetId, status: newStatus, timestamp });
+        const errData = await res.json().catch(() => ({}));
+        showToast(errData.error || (currentLang === 'ar' ? 'فشل تحديث المرحلة بالخادم' : 'Failed to update stage on server'), true);
       }
     } catch (err) {
-      console.warn('Backend update failed, queued offline:', err);
-      const targetId = item.id || item._id;
-      addToOfflineQueue({ type: 'status_update', id: targetId, status: newStatus, timestamp });
+      console.error('Backend update failed:', err);
+      showToast(currentLang === 'ar' ? 'تعذر الاتصال بالخادم' : 'Server connection error', true);
     }
   }
 
@@ -2243,14 +2512,18 @@
                     <span>|</span>
                     <span class="worker-inline-countdown px-2 py-0.5 rounded text-[10px] font-mono font-bold border transition-all ${
                       isCompleted 
-                        ? 'bg-emerald-50 text-emerald-900 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-200' 
+                        ? (checkIsDeadlineOverdue(task.deadline, task.status, task.completedAt, task.isOverdue)
+                          ? 'bg-rose-50 text-rose-900 border-rose-300 dark:bg-rose-950 dark:text-rose-200' 
+                          : 'bg-emerald-50 text-emerald-900 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-200')
                         : (new Date(task.deadline).getTime() <= Date.now())
                           ? 'bg-rose-50 text-rose-900 border-rose-300 dark:bg-rose-950 dark:text-rose-200 animate-pulse'
                           : 'bg-cyan-50 text-cyan-900 border-cyan-300 dark:bg-cyan-950 dark:text-cyan-200'
                     }"
                       data-deadline="${escapeHtml(task.deadline)}"
-                      data-status="${escapeHtml(task.status || 'pending')}">
-                      ${renderInlineCountdownBadge(task.deadline, task.status, currentLang)}
+                      data-status="${escapeHtml(task.status || 'pending')}"
+                      data-completed-at="${escapeHtml(task.completedAt || '')}"
+                      data-overdue="${task.isOverdue ? 'true' : ''}">
+                      ${renderInlineCountdownBadge(task.deadline, task.status, currentLang, checkIsDeadlineOverdue(task.deadline, task.status, task.completedAt, task.isOverdue))}
                     </span>
                   ` : ''}
                 </div>
@@ -2273,7 +2546,9 @@
           ${task.deadline ? `
             <div class="task-countdown-box flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-lg border transition-all ${
               isCompleted 
-                ? 'bg-emerald-50/70 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800/60'
+                ? (checkIsDeadlineOverdue(task.deadline, task.status, task.completedAt, task.isOverdue)
+                  ? 'bg-rose-50/90 dark:bg-rose-950/50 border-rose-300 dark:border-rose-800/80 shadow-xs'
+                  : 'bg-emerald-50/70 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800/60')
                 : (new Date(task.deadline).getTime() <= Date.now())
                   ? 'bg-rose-50/90 dark:bg-rose-950/50 border-rose-300 dark:border-rose-800/80 shadow-xs'
                   : 'bg-cyan-50/70 dark:bg-cyan-950/30 border-cyan-200 dark:border-cyan-800/60'
@@ -2281,8 +2556,11 @@
               data-deadline="${escapeHtml(task.deadline)}"
               data-status="${escapeHtml(task.status || 'pending')}"
               data-finished="${escapeHtml(task.finishedAt || '')}"
+              data-started="${escapeHtml(task.startedAt || task.kneadingAt || task.time || '')}"
+              data-completed-at="${escapeHtml(task.completedAt || '')}"
+              data-overdue="${task.isOverdue ? 'true' : ''}"
               data-target-minutes="${escapeHtml(task.targetDurationMinutes ? String(task.targetDurationMinutes) : '')}">
-              ${renderCountdownContent(task.deadline, task.status, task.finishedAt, task.targetDurationMinutes, currentLang)}
+              ${renderCountdownContent(task.deadline, task.status, task.finishedAt, task.targetDurationMinutes, currentLang, checkIsDeadlineOverdue(task.deadline, task.status, task.completedAt, task.isOverdue), task.completedAt, task.startedAt || task.kneadingAt || task.time)}
             </div>
           ` : ''}
 
@@ -2349,54 +2627,7 @@
     });
   }
 
-  // Duration Parsing & Computation
-  // ponytail: assumes same-day timestamps with optional AM/PM or ص/م; upgrade to full ISO date strings if work shifts cross midnight.
-  function parseTimeToSeconds(timeStr) {
-    if (!timeStr) return null;
-    // Normalize Eastern Arabic digits to Western digits first
-    const normalized = localizeDigits(timeStr, 'en').trim();
-    const isPM = /(pm|م)/i.test(normalized);
-    const isAM = /(am|ص)/i.test(normalized);
-    const cleanStr = normalized.replace(/\s*(am|pm|ص|م)/gi, '').trim();
-    const parts = cleanStr.split(':').map(Number);
-    if (parts.length < 2 || parts.some(isNaN)) return null;
-
-    let hours = parts[0];
-    if (isPM && hours < 12) hours += 12;
-    if (isAM && hours === 12) hours = 0;
-
-    return hours * 3600 + parts[1] * 60 + (parts[2] || 0);
-  }
-
-  function computeDurationSeconds(startStr, finishStr) {
-    const s = parseTimeToSeconds(startStr);
-    const f = parseTimeToSeconds(finishStr);
-    if (s === null || f === null) return null;
-    let diff = f - s;
-    if (diff < 0) diff += 86400; // shift crossed midnight
-    return diff;
-  }
-
-  function formatDuration(seconds) {
-    if (seconds === null || isNaN(seconds)) return '--';
-    const totalSec = Math.round(seconds);
-    const hrs = Math.floor(totalSec / 3600);
-    const mins = Math.floor((totalSec % 3600) / 60);
-    const secs = totalSec % 60;
-
-    if (currentLang === 'ar') {
-      const hStr = localizeDigits(hrs, 'ar');
-      const mStr = localizeDigits(mins, 'ar');
-      const sStr = localizeDigits(secs, 'ar');
-      if (hrs > 0) return `${hStr} س ${mStr} د`;
-      if (mins > 0) return `${mStr} د ${sStr} ث`;
-      return `${sStr} ثانية`;
-    } else {
-      if (hrs > 0) return `${hrs}h ${mins}m`;
-      if (mins > 0) return `${mins}m ${secs}s`;
-      return `${secs}s`;
-    }
-  }
+  // (Duration helpers moved to helper section)
 
   function renderWorkerKPIs() {
     const grid = document.getElementById('worker-kpi-grid');
@@ -2603,8 +2834,16 @@
           </td>
           <td class="py-2.5 px-3 text-center">
             ${r.deadline ? `
-              <div class="admin-countdown-pill inline-flex flex-col items-center justify-center gap-0.5" data-deadline="${escapeHtml(r.deadline)}" data-status="${escapeHtml(r.status || 'pending')}">
-                ${renderAdminCountdownPill(r.deadline, r.status, currentLang)}
+              <div class="admin-countdown-pill inline-flex flex-col items-center justify-center gap-0.5" 
+                data-deadline="${escapeHtml(r.deadline)}" 
+                data-status="${escapeHtml(r.status || 'pending')}"
+                data-completed-at="${escapeHtml(r.completedAt || '')}"
+                data-started-at="${escapeHtml(r.startedAt || r.kneadingAt || r.time || '')}"
+                data-finished-at="${escapeHtml(r.finishedAt || '')}"
+                data-date="${escapeHtml(r.date || '')}"
+                data-target-minutes="${escapeHtml(r.targetDurationMinutes ? String(r.targetDurationMinutes) : '')}"
+                data-overdue="${r.isOverdue ? 'true' : ''}">
+                ${renderAdminCountdownPill(r.deadline, r.status, currentLang, checkIsDeadlineOverdue(r.deadline, r.status, r.completedAt, r.isOverdue), r.completedAt, r.targetDurationMinutes, r.startedAt || r.kneadingAt || r.time, r.finishedAt, r.date)}
               </div>
             ` : `<span class="text-slate-400 font-mono text-xs">-</span>`}
           </td>
@@ -2635,7 +2874,18 @@
               <span class="font-mono text-slate-600 dark:text-slate-400">${escapeHtml(formatDisplayTime(r.startedAt, currentLang))}</span>
             `}
           </td>
-          <td class="py-2.5 px-3 text-center font-mono font-bold text-emerald-700 dark:text-emerald-400">${escapeHtml(formatDisplayTime(r.finishedAt, currentLang))}</td>
+          <td class="py-2.5 px-3 text-center font-mono">
+            ${r.finishedAt ? `
+              <div class="inline-flex flex-col items-center">
+                <span class="font-bold text-emerald-700 dark:text-emerald-400">${escapeHtml(formatDisplayTime(r.finishedAt, currentLang))}</span>
+                ${(r.startedAt || r.kneadingAt || r.time) ? `
+                  <span class="text-[10px] text-slate-500 dark:text-slate-400 font-semibold whitespace-nowrap">
+                    ${isAr ? 'المدة:' : 'Dur:'} ${formatDuration(computeDurationSeconds(r.startedAt || r.kneadingAt || r.time, r.finishedAt))}
+                  </span>
+                ` : ''}
+              </div>
+            ` : `<span class="text-slate-400 font-mono">-</span>`}
+          </td>
           <td class="py-2.5 px-3 text-center">
             <button class="delete-record-btn text-[11px] text-rose-600 dark:text-rose-400 hover:text-rose-800 font-mono font-semibold px-2 py-0.5 rounded hover:bg-rose-50 dark:hover:bg-rose-950/40" data-id="${r.id || r._id}">
               ${t.btnDelete}
@@ -2709,11 +2959,11 @@
     try {
       const res = await fetch(`${API_BASE}/logs/${id}`, { method: 'DELETE' });
       if (!res.ok) {
-        addToOfflineQueue({ type: 'delete_log', id });
+        showToast(currentLang === 'ar' ? 'فشل حذف السجل من الخادم' : 'Failed to delete record from server', true);
       }
     } catch (err) {
-      console.warn('Could not delete from backend, queued offline:', err);
-      addToOfflineQueue({ type: 'delete_log', id });
+      console.error('Could not delete from backend:', err);
+      showToast(currentLang === 'ar' ? 'تعذر الاتصال بالخادم' : 'Server connection error', true);
     }
   }
 
@@ -2770,11 +3020,11 @@
       <body>
         <table>
           <tr>
-            <td colspan="11" class="title">${isRtl ? 'سجل عمليات الإنتاج اليومي' : 'Manufacturing Production Log'}</td>
+            <td colspan="13" class="title">${isRtl ? 'سجل عمليات الإنتاج اليومي وتتبع الوقت' : 'Manufacturing Production & Time Tracking Log'}</td>
           </tr>
           <tr>
-            <td colspan="6" class="meta">${isRtl ? 'تاريخ التصدير:' : 'Exported:'} ${todayStr} ${timeNow}</td>
-            <td colspan="5" class="meta" style="text-align: right;">${isRtl ? 'المستخدم:' : 'User:'} ${currentUser ? currentUser.username : 'admin'}</td>
+            <td colspan="7" class="meta">${isRtl ? 'تاريخ التصدير:' : 'Exported:'} ${todayStr} ${timeNow}</td>
+            <td colspan="6" class="meta" style="text-align: right;">${isRtl ? 'المستخدم:' : 'User:'} ${currentUser ? currentUser.username : 'admin'}</td>
           </tr>
           <tr></tr>
           <tr>
@@ -2789,8 +3039,31 @@
             <th class="th-main">${isRtl ? 'الحالة' : 'Status'}</th>
             <th class="th-main">${isRtl ? 'بدء التنفيذ / المراحل' : 'Started / Stages'}</th>
             <th class="th-main">${isRtl ? 'الانتهاء' : 'Finished'}</th>
+            <th class="th-main">${isRtl ? 'الوقت المستغرق' : 'Duration'}</th>
+            <th class="th-main">${isRtl ? 'تجاوز الوقت / الالتزام' : 'Overdue / Delay'}</th>
           </tr>
-          ${filtered.map((r, i) => `
+          ${filtered.map((r, i) => {
+            const durSec = (r.startedAt || r.kneadingAt || r.time) && r.finishedAt 
+              ? computeDurationSeconds(r.startedAt || r.kneadingAt || r.time, r.finishedAt) 
+              : null;
+            const durText = durSec !== null ? formatDuration(durSec) : '-';
+            const isOver = checkIsDeadlineOverdue(r.deadline, r.status, r.completedAt, r.isOverdue);
+            let adherenceText = '-';
+            let adherenceColor = '#475569';
+            if (r.deadline) {
+              const overdueSec = getOverdueSeconds(r.deadline, r.completedAt, r.date, r.finishedAt);
+              if (isOver && overdueSec > 0) {
+                adherenceText = `${isRtl ? 'متأخر +' : 'Late +'}${formatDuration(overdueSec)}`;
+                adherenceColor = '#b91c1c';
+              } else if (r.status === 'completed') {
+                adherenceText = isRtl ? 'أُنجز بالموعد' : 'On Time';
+                adherenceColor = '#15803d';
+              } else {
+                adherenceText = isRtl ? 'ضمن الوقت' : 'Within Time';
+                adherenceColor = '#0369a1';
+              }
+            }
+            return `
             <tr>
               <td class="cell cell-center">${isRtl ? localizeDigits(i + 1, 'ar') : i + 1}</td>
               <td class="cell cell-center">${escapeHtml(formatDisplayDate(r.date, currentLang))}</td>
@@ -2807,8 +3080,11 @@
                 r.millingAt ? `${isRtl ? 'طحن' : 'Mill'}: ${formatDisplayTime(r.millingAt, currentLang)}` : null
               ].filter(Boolean).join(' | ') || '-') : escapeHtml(formatDisplayTime(r.startedAt, currentLang))}</td>
               <td class="cell cell-center" style="font-weight: bold; color: #15803d;">${escapeHtml(formatDisplayTime(r.finishedAt, currentLang))}</td>
+              <td class="cell cell-center" style="font-weight: bold; color: #0284c7;">${durText}</td>
+              <td class="cell cell-center" style="font-weight: bold; color: ${adherenceColor};">${adherenceText}</td>
             </tr>
-          `).join('')}
+          `;
+          }).join('')}
         </table>
       </body>
       </html>
@@ -2831,20 +3107,41 @@
       return;
     }
 
-    const headers = ['#', 'Date', 'Time', 'Operator', 'Operation', 'Batch_Product', 'Quantity', 'Notes', 'Status', 'StartedAt', 'FinishedAt'];
-    const rows = filtered.map((r, i) => [
-      i + 1,
-      r.date,
-      r.time,
-      `"${(getWorkerDisplayName(r.worker, currentLang) || '').replace(/"/g, '""')}"`,
-      `"${(r.task || '').replace(/"/g, '""')}"`,
-      `"${(r.product || '').replace(/"/g, '""')}"`,
-      `"${(r.quantity || '').replace(/"/g, '""')}"`,
-      `"${(r.notes || '').replace(/"/g, '""')}"`,
-      r.status || 'pending',
-      r.startedAt || '',
-      r.finishedAt || ''
-    ]);
+    const headers = ['#', 'Date', 'Time', 'Operator', 'Operation', 'Batch_Product', 'Quantity', 'Notes', 'Status', 'StartedAt', 'FinishedAt', 'Duration', 'OverdueDelay'];
+    const rows = filtered.map((r, i) => {
+      const durSec = (r.startedAt || r.kneadingAt || r.time) && r.finishedAt 
+        ? computeDurationSeconds(r.startedAt || r.kneadingAt || r.time, r.finishedAt) 
+        : null;
+      const durText = durSec !== null ? formatDuration(durSec) : '';
+      const isOver = checkIsDeadlineOverdue(r.deadline, r.status, r.completedAt, r.isOverdue);
+      let adherenceText = '';
+      if (r.deadline) {
+        const overdueSec = getOverdueSeconds(r.deadline, r.completedAt, r.date, r.finishedAt);
+        if (isOver && overdueSec > 0) {
+          adherenceText = `+${formatDuration(overdueSec)}`;
+        } else if (r.status === 'completed') {
+          adherenceText = 'On Time';
+        } else {
+          adherenceText = 'Within Time';
+        }
+      }
+
+      return [
+        i + 1,
+        r.date,
+        r.time,
+        `"${(getWorkerDisplayName(r.worker, currentLang) || '').replace(/"/g, '""')}"`,
+        `"${(r.task || '').replace(/"/g, '""')}"`,
+        `"${(r.product || '').replace(/"/g, '""')}"`,
+        `"${(r.quantity || '').replace(/"/g, '""')}"`,
+        `"${(r.notes || '').replace(/"/g, '""')}"`,
+        r.status || 'pending',
+        r.startedAt || '',
+        r.finishedAt || '',
+        `"${durText.replace(/"/g, '""')}"`,
+        `"${adherenceText.replace(/"/g, '""')}"`
+      ];
+    });
 
     const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(row => row.join(','))].join('\r\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -2852,8 +3149,6 @@
     link.href = URL.createObjectURL(blob);
     link.download = `factory_production_${getTodayDateString()}.csv`;
     document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
   }
 
   // Print PDF Report
@@ -2893,12 +3188,14 @@
           .title { font-size: 18px; font-weight: bold; color: #1e2540; }
           .subtitle { font-size: 12px; color: #64748b; }
           .meta { font-size: 11px; color: #475569; text-align: ${isRtl ? 'left' : 'right'}; font-family: monospace; }
-          table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 11px; }
-          th { background-color: #1e2540; color: white; padding: 8px 10px; border: 1px solid #141a2e; text-align: ${isRtl ? 'right' : 'left'}; }
-          td { border: 1px solid #cbd5e1; padding: 6px 10px; text-align: ${isRtl ? 'right' : 'left'}; }
+          table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 10px; }
+          th { background-color: #1e2540; color: white; padding: 6px 8px; border: 1px solid #141a2e; text-align: ${isRtl ? 'right' : 'left'}; }
+          td { border: 1px solid #cbd5e1; padding: 5px 8px; text-align: ${isRtl ? 'right' : 'left'}; }
           tr:nth-child(even) { background-color: #f8fafc; }
           .center { text-align: center; }
           .qty { font-weight: bold; text-align: center; }
+          .late { color: #dc2626; font-weight: bold; }
+          .ontime { color: #16a34a; font-weight: bold; }
           .summary { margin-top: 25px; display: flex; justify-content: space-between; font-size: 11px; border-top: 1px solid #e2e8f0; padding-top: 15px; font-family: monospace; }
           .signature { margin-top: 40px; display: flex; justify-content: space-between; font-size: 11px; font-weight: bold; }
           @media print { button { display: none; } body { padding: 0; } }
@@ -2908,7 +3205,7 @@
         <div class="header">
           <div>
             <div class="title">UG ENTERPRISE PRODUCTION REPORT</div>
-            <div class="subtitle">${isRtl ? 'سجل العمليات التشغيلية اليومي' : 'Daily Manufacturing Operations & Dispatch Log'}</div>
+            <div class="subtitle">${isRtl ? 'سجل العمليات التشغيلية اليومي وتتبع تجاوز الوقت' : 'Daily Manufacturing Operations & Time Adherence Log'}</div>
           </div>
           <div class="meta">
             <div><strong>${isRtl ? 'التاريخ:' : 'Date:'}</strong> ${todayStr}</div>
@@ -2920,7 +3217,7 @@
         <table>
           <thead>
             <tr>
-              <th style="width: 35px;" class="center">#</th>
+              <th style="width: 30px;" class="center">#</th>
               <th>${t.thDate}</th>
               <th class="center">${t.thTime}</th>
               <th>${t.thWorker}</th>
@@ -2931,10 +3228,32 @@
               <th class="center">${t.thStatus}</th>
               <th class="center">${t.thStart}</th>
               <th class="center">${t.thFinish}</th>
+              <th class="center">${isRtl ? 'المدة' : 'Duration'}</th>
+              <th class="center">${isRtl ? 'تجاوز الوقت' : 'Delay / Overdue'}</th>
             </tr>
           </thead>
           <tbody>
-            ${filtered.map((r, i) => `
+            ${filtered.map((r, i) => {
+              const durSec = (r.startedAt || r.kneadingAt || r.time) && r.finishedAt 
+                ? computeDurationSeconds(r.startedAt || r.kneadingAt || r.time, r.finishedAt) 
+                : null;
+              const durText = durSec !== null ? formatDuration(durSec) : '-';
+              const isOver = checkIsDeadlineOverdue(r.deadline, r.status, r.completedAt, r.isOverdue);
+              let delayText = '-';
+              let delayClass = '';
+              if (r.deadline) {
+                const overdueSec = getOverdueSeconds(r.deadline, r.completedAt, r.date, r.finishedAt);
+                if (isOver && overdueSec > 0) {
+                  delayText = `+${formatDuration(overdueSec)}`;
+                  delayClass = 'late';
+                } else if (r.status === 'completed') {
+                  delayText = isRtl ? 'في الموعد' : 'On Time';
+                  delayClass = 'ontime';
+                } else {
+                  delayText = isRtl ? 'ضمن الوقت' : 'In Target';
+                }
+              }
+              return `
               <tr>
                 <td class="center">${isRtl ? localizeDigits(i + 1, 'ar') : i + 1}</td>
                 <td>${escapeHtml(formatDisplayDate(r.date, currentLang))}</td>
@@ -2947,8 +3266,11 @@
                 <td class="center font-mono"><strong>${stageNames[r.status] || stageNames.pending}</strong></td>
                 <td class="center font-mono">${escapeHtml(formatDisplayTime(r.startedAt, currentLang))}</td>
                 <td class="center font-mono font-bold">${escapeHtml(formatDisplayTime(r.finishedAt, currentLang))}</td>
+                <td class="center font-mono">${durText}</td>
+                <td class="center font-mono ${delayClass}">${delayText}</td>
               </tr>
-            `).join('')}
+            `;
+            }).join('')}
           </tbody>
         </table>
 
@@ -2989,10 +3311,11 @@
 
     // 1. Try server authentication
     try {
-      const res = await fetch(`${API_BASE}/auth/login`, {
+      const res = await fetchWithTimeout(`${API_BASE}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: cleanUser, password: cleanPass })
+        body: JSON.stringify({ username: cleanUser, password: cleanPass }),
+        timeout: 4000
       });
 
       if (res.ok) {
@@ -3062,7 +3385,7 @@
 
   async function loadOvertimeRecords() {
     try {
-      const res = await fetch(`${API_BASE}/overtime`);
+      const res = await fetchWithTimeout(`${API_BASE}/overtime`, { timeout: 4000 });
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data)) {
@@ -3115,18 +3438,15 @@
       });
       if (res.ok) {
         saved = await res.json();
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        showToast(errData.error || (currentLang === 'ar' ? 'فشل تسجيل انصراف السهر بالخادم' : 'Failed to record night departure on server'), true);
+        return;
       }
     } catch (err) {
-      console.warn('Overtime save offline fallback:', err);
-    }
-
-    if (!saved) {
-      saved = {
-        _id: 'ot_' + Date.now(),
-        ...payload,
-        createdAt: new Date().toISOString()
-      };
-      addToOfflineQueue({ type: 'create_overtime', payload });
+      console.error('Overtime save error:', err);
+      showToast(currentLang === 'ar' ? 'تعذر الاتصال بالخادم' : 'Server connection error', true);
+      return;
     }
 
     overtimeRecords.unshift(saved);
@@ -3725,17 +4045,17 @@
   }
 
   // ==============================================================
-  // PWA & ZERO-DROP OFFLINE SYNC
+  // PWA APP INSTALL
   // ==============================================================
   let deferredInstallPrompt = null;
 
   function initPWA() {
     if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js').catch(err => {
-          console.warn('SW registration failed:', err);
-        });
-      });
+      navigator.serviceWorker.getRegistrations().then(registrations => {
+        for (const registration of registrations) {
+          registration.unregister();
+        }
+      }).catch(() => {});
     }
 
     const installBtn = document.getElementById('btn-install-app');
@@ -3763,150 +4083,43 @@
     });
   }
 
-  function getOfflineQueue() {
-    try {
-      const q = localStorage.getItem(OFFLINE_QUEUE_KEY);
-      return q ? JSON.parse(q) : [];
-    } catch {
-      return [];
-    }
-  }
-
-  function saveOfflineQueue(queue) {
-    try {
-      localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(queue));
-    } catch (e) {
-      console.warn('Could not save offline queue:', e);
-    }
-  }
-
-  function addToOfflineQueue(action) {
-    const queue = getOfflineQueue();
-    queue.push({ ...action, queuedAt: Date.now() });
-    saveOfflineQueue(queue);
-    updateNetworkStatus();
-  }
-
-  function updateNetworkStatus() {
-    const offlineIndicator = document.getElementById('offline-indicator');
-    const offlineText = document.getElementById('offline-indicator-text');
-    const isOnline = navigator.onLine;
-    const queue = getOfflineQueue();
-    const t = I18N[currentLang] || I18N.ar;
-
-    if (offlineIndicator) {
-      if (!isOnline) {
-        offlineIndicator.classList.remove('hidden');
-        if (offlineText) offlineText.textContent = t.offlineBadge;
-      } else if (queue.length > 0) {
-        offlineIndicator.classList.remove('hidden');
-        if (offlineText) offlineText.textContent = `${t.syncingBadge} (${queue.length})`;
-      } else {
-        offlineIndicator.classList.add('hidden');
-      }
-    }
-  }
-
-  let isSyncing = false;
-  async function syncOfflineQueue() {
-    if (isSyncing || !navigator.onLine) return;
-    const queue = getOfflineQueue();
-    if (!queue.length) return;
-
-    isSyncing = true;
-    const remaining = [];
-    let syncedCount = 0;
-
-    for (const item of queue) {
-      try {
-        if (item.type === 'create_log') {
-          const res = await fetch(`${API_BASE}/logs`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(item.payload)
-          });
-          if (res.ok) {
-            const saved = await res.json();
-            if (saved && saved.id) {
-              const rec = records.find(r => r.id === item.payload.id || r._id === item.payload._id);
-              if (rec) rec.id = saved.id;
-              saveRecordsLocal();
-            }
-            syncedCount++;
-          } else {
-            remaining.push(item);
-          }
-        } else if (item.type === 'status_update') {
-          const res = await fetch(`${API_BASE}/logs/${item.id}/status`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status: item.status, timestamp: item.timestamp })
-          });
-          if (res.ok) syncedCount++;
-          else remaining.push(item);
-        } else if (item.type === 'delete_log') {
-          const res = await fetch(`${API_BASE}/logs/${item.id}`, { method: 'DELETE' });
-          if (res.ok) syncedCount++;
-          else remaining.push(item);
-        } else if (item.type === 'create_overtime') {
-          const res = await fetch(`${API_BASE}/overtime`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(item.payload)
-          });
-          if (res.ok) syncedCount++;
-          else remaining.push(item);
-        }
-      } catch (err) {
-        remaining.push(item);
-        break;
-      }
-    }
-
-    saveOfflineQueue(remaining);
-    isSyncing = false;
-    updateNetworkStatus();
-
-    if (syncedCount > 0) {
-      showToast(currentLang === 'ar'
-        ? `تمت مزامنة (${syncedCount}) عمليات كانت محفوظة محلياً`
-        : `Synced (${syncedCount}) offline operations`);
-    }
-  }
-
   // Boot
   async function init() {
-    await loadData();
-    await loadOvertimeRecords();
+    // 1. Setup events immediately so cards and buttons are clickable without delay
+    setupEvents();
+
+    // 2. Load cached local settings
+    const savedLang = localStorage.getItem(LANG_KEY);
+    currentLang = (savedLang === 'en' || savedLang === 'ar') ? savedLang : 'ar';
+    const savedTheme = localStorage.getItem(THEME_KEY);
+    currentTheme = (savedTheme === 'dark' || savedTheme === 'light') ? savedTheme : 'light';
+
     applyTheme(currentTheme);
     applyLanguage(currentLang);
     startClock();
     refreshWorkerDropdowns();
-    setupEvents();
     initPWA();
-    updateNetworkStatus();
 
-    window.addEventListener('online', () => {
-      updateNetworkStatus();
-      syncOfflineQueue();
-      fetchServerRecords();
-    });
-    window.addEventListener('offline', updateNetworkStatus);
-    setInterval(syncOfflineQueue, 8000);
-
-    // Async pre-fetch users for cache & dropdowns
-    fetch(`${API_BASE}/users`).then(r => r.json()).then(users => {
-      if (Array.isArray(users) && users.length > 0) {
-        localStorage.setItem('ug_production_users', JSON.stringify(users));
-        refreshWorkerDropdowns(users);
-      }
-    }).catch(() => {});
-
+    // 3. Render initial view immediately
+    const savedUser = sessionStorage.getItem(USER_SESSION_KEY) || localStorage.getItem(USER_SESSION_KEY);
+    currentUser = savedUser ? JSON.parse(savedUser) : null;
     if (currentUser) {
       routeUser(currentUser);
     } else {
       showView('portals');
     }
+
+    // 4. Background network sync (non-blocking)
+    localStorage.removeItem('factory_offline_sync_queue_v1');
+    loadData().catch(e => console.warn('loadData:', e));
+    loadOvertimeRecords().catch(e => console.warn('loadOvertimeRecords:', e));
+
+    fetchWithTimeout(`${API_BASE}/users`, { timeout: 4000 }).then(r => r.json()).then(users => {
+      if (Array.isArray(users) && users.length > 0) {
+        localStorage.setItem('ug_production_users', JSON.stringify(users));
+        refreshWorkerDropdowns(users);
+      }
+    }).catch(() => {});
   }
 
   if (document.readyState === 'loading') {

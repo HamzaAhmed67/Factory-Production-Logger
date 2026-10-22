@@ -84,13 +84,7 @@
       <!-- Actions: Theme, Language, Role Switch -->
       <div class="flex items-center space-x-2 rtl:space-x-reverse">
 
-        <!-- Offline Status Badge -->
-        <span id="offline-indicator"
-          class="hidden px-2 py-0.5 text-[10px] font-bold rounded-full bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/30 flex items-center space-x-1 rtl:space-x-reverse"
-          title="Working offline - changes will sync when connected">
-          <span class="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></span>
-          <span id="offline-indicator-text">غير متصل</span>
-        </span>
+
 
         <!-- Install App Button (PWA) -->
         <button id="btn-install-app"
@@ -1240,7 +1234,19 @@
     </div>
   </div>
 
-  <script src="app.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function(regs) {
+        for (var r of regs) r.unregister();
+      }).catch(function() {});
+    }
+    if ('caches' in window) {
+      caches.keys().then(function(names) {
+        for (var n of names) caches.delete(n);
+      }).catch(function() {});
+    }
+  </script>
+  <script src="app.js?v=2.5.2"></script>
 </body>
 
 </html>
