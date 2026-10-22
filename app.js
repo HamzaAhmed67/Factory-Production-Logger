@@ -206,6 +206,7 @@
       thQty: 'Quantity',
       thNotes: 'Notes',
       thStatus: 'Status',
+      thTimer: 'Target Timer',
       thStart: 'Started / Stages',
       thFinish: 'Finished',
       thAction: 'Action',
@@ -402,6 +403,7 @@
       thQty: 'الكمية',
       thNotes: 'الملاحظات',
       thStatus: 'الحالة',
+      thTimer: 'الوقت المحدد والعداد',
       thStart: 'وقت البدء / المراحل',
       thFinish: 'وقت الانتهاء',
       thAction: 'إجراء',
@@ -833,6 +835,7 @@
     setText('th-a-qty', t.thQty);
     setText('th-a-notes', t.thNotes);
     setText('th-a-status', t.thStatus);
+    setText('th-a-timer', t.thTimer);
     setText('th-a-start', t.thStart);
     setText('th-a-finish', t.thFinish);
     setText('th-a-action', t.thAction);
@@ -1010,21 +1013,39 @@
     }
   }
 
-  function renderAdminCountdownPill(deadline, status, lang = currentLang) {
+  function renderInlineCountdownBadge(deadline, status, lang = currentLang) {
     if (!deadline) return '';
     const isAr = lang === 'ar';
     if (status === 'completed') {
-      return `<span class="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300">✓ ${isAr ? 'أُنجز' : 'Done'}</span>`;
+      return `<span>✅ ${isAr ? 'تم بالموعد' : 'On Time'}</span>`;
     }
     const diffMs = new Date(deadline).getTime() - Date.now();
     const diffSec = Math.floor(diffMs / 1000);
     if (diffSec > 0) {
       const isUrgent = diffSec < 900;
       const str = formatCountdownTime(diffSec);
-      return `<span class="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold ${isUrgent ? 'bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200 border border-amber-300 animate-pulse' : 'bg-cyan-100 text-cyan-900 dark:bg-cyan-950 dark:text-cyan-200 border border-cyan-300'}">⏱ ${str}</span>`;
+      return `<span class="inline-flex items-center gap-1 font-mono font-bold ${isUrgent ? 'text-amber-800 dark:text-amber-300 animate-pulse' : 'text-cyan-800 dark:text-cyan-300'}"><span>⏱️</span><span>${isAr ? 'متبقي' : 'Left'}: ${str}</span></span>`;
     } else {
       const str = formatCountdownTime(diffSec);
-      return `<span class="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-rose-100 text-rose-900 dark:bg-rose-950 dark:text-rose-200 border border-rose-300 animate-pulse">🚨 +${str}</span>`;
+      return `<span class="inline-flex items-center gap-1 font-mono font-bold text-rose-800 dark:text-rose-300 animate-pulse"><span>🚨</span><span>${isAr ? 'متأخر' : 'Overdue'}: +${str}</span></span>`;
+    }
+  }
+
+  function renderAdminCountdownPill(deadline, status, lang = currentLang) {
+    if (!deadline) return '<span class="text-slate-400 font-mono text-xs">-</span>';
+    const isAr = lang === 'ar';
+    if (status === 'completed') {
+      return `<span class="px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-emerald-50 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300">✓ ${isAr ? 'أُنجز' : 'Done'}</span>`;
+    }
+    const diffMs = new Date(deadline).getTime() - Date.now();
+    const diffSec = Math.floor(diffMs / 1000);
+    if (diffSec > 0) {
+      const isUrgent = diffSec < 900;
+      const str = formatCountdownTime(diffSec);
+      return `<span class="px-2 py-0.5 rounded text-[11px] font-mono font-bold ${isUrgent ? 'bg-amber-50 text-amber-900 dark:bg-amber-950 dark:text-amber-200 border border-amber-300 animate-pulse' : 'bg-cyan-50 text-cyan-900 dark:bg-cyan-950 dark:text-cyan-200 border border-cyan-300'}">⏱ ${str}</span>`;
+    } else {
+      const str = formatCountdownTime(diffSec);
+      return `<span class="px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-rose-50 text-rose-900 dark:bg-rose-950 dark:text-rose-200 border border-rose-300 animate-pulse">🚨 +${str}</span>`;
     }
   }
 
@@ -1050,6 +1071,26 @@
         el.className = baseClass + 'bg-amber-50/80 dark:bg-amber-950/40 border-amber-300 dark:border-amber-700/60';
       } else {
         el.className = baseClass + 'bg-cyan-50/70 dark:bg-cyan-950/30 border-cyan-200 dark:border-cyan-800/60';
+      }
+    });
+
+    const inlineBadges = document.querySelectorAll('.worker-inline-countdown[data-deadline]');
+    inlineBadges.forEach(el => {
+      const deadline = el.getAttribute('data-deadline');
+      const status = el.getAttribute('data-status');
+      if (!deadline) return;
+      el.innerHTML = renderInlineCountdownBadge(deadline, status, currentLang);
+      const isCompleted = status === 'completed';
+      const diffMs = new Date(deadline).getTime() - Date.now();
+      const baseClass = 'worker-inline-countdown px-2 py-0.5 rounded text-[10px] font-mono font-bold border transition-all ';
+      if (isCompleted) {
+        el.className = baseClass + 'bg-emerald-50 text-emerald-900 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-200';
+      } else if (diffMs <= 0) {
+        el.className = baseClass + 'bg-rose-50 text-rose-900 border-rose-300 dark:bg-rose-950 dark:text-rose-200 animate-pulse shadow-xs';
+      } else if (diffMs < 900000) {
+        el.className = baseClass + 'bg-amber-50 text-amber-900 border-amber-300 dark:bg-amber-950 dark:text-amber-200';
+      } else {
+        el.className = baseClass + 'bg-cyan-50 text-cyan-900 border-cyan-300 dark:bg-cyan-950 dark:text-cyan-200';
       }
     });
 
@@ -1376,6 +1417,75 @@
     }
   }
 
+  function renderAdminUsersRows(users, tbody) {
+    if (!tbody) return;
+    if (!Array.isArray(users) || users.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="5" class="py-4 text-center text-xs text-slate-500">No user accounts found</td></tr>`;
+      return;
+    }
+
+    const isAr = currentLang === 'ar';
+    const isEn = currentLang === 'en';
+
+    function renderRoleSelector(u) {
+      const currentTitle = u.roleTitle || (
+        u.role === 'admin' ? 'مدير النظام' :
+        u.role === 'supervisor' ? 'مشرف انتاج' :
+        'عامل'
+      );
+
+      const options = [
+        { value: 'مدير النظام', role: 'admin', label: isEn ? 'System Administrator' : 'مدير النظام' },
+        { value: 'مدير تنفيذي', role: 'admin', label: isEn ? 'Executive Director' : 'مدير تنفيذي' },
+        { value: 'مدير انتاج', role: 'admin', label: isEn ? 'Production Manager' : 'مدير انتاج' },
+        { value: 'مشرف انتاج', role: 'supervisor', label: isEn ? 'Production Supervisor' : 'مشرف انتاج' },
+        { value: 'عامل', role: 'worker', label: isEn ? 'Worker' : 'عامل' }
+      ];
+
+      return `
+        <select class="user-edit-role-select text-xs font-bold rounded px-2.5 py-1 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 outline-none focus:ring-1 focus:ring-[#1e2540] cursor-pointer"
+          data-username="${escapeHtml(u.username)}">
+          ${options.map(opt => `
+            <option value="${opt.value}" data-role="${opt.role}" ${currentTitle === opt.value ? 'selected' : ''}>
+              ${opt.label}
+            </option>
+          `).join('')}
+        </select>
+      `;
+    }
+
+    tbody.innerHTML = users.map(u => {
+      const isOwnerAccount = isServerOwner(u);
+      return `
+      <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition">
+        <td class="py-2.5 px-3">${renderRoleSelector(u)}</td>
+        <td class="py-2.5 px-3 font-mono font-bold text-[#1e2540] dark:text-[#d4aa65]">${escapeHtml(u.username)}</td>
+        <td class="py-2.5 px-3">
+          <input type="text" class="user-edit-name w-full max-w-[180px] px-2.5 py-1 text-xs font-semibold rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 outline-none focus:ring-1 focus:ring-[#1e2540]"
+            data-username="${escapeHtml(u.username)}" value="${escapeHtml(u.name || getWorkerDisplayName(u.username, currentLang))}">
+        </td>
+        <td class="py-2.5 px-3">
+          <input type="text" class="user-edit-password w-full max-w-[180px] px-2.5 py-1 text-xs font-mono font-semibold rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 outline-none focus:ring-1 focus:ring-[#1e2540]"
+            data-username="${escapeHtml(u.username)}" value="${escapeHtml(u.password || '')}" placeholder="Password">
+        </td>
+        <td class="py-2.5 px-3 text-center">
+          <div class="inline-flex items-center gap-1.5 justify-center">
+            <button type="button" class="btn-save-user px-3 py-1 rounded text-xs font-bold bg-emerald-700 hover:bg-emerald-800 text-white shadow-sm transition active:scale-95 cursor-pointer"
+              data-username="${escapeHtml(u.username)}">
+              ${currentLang === 'ar' ? 'حفظ' : 'Save'}
+            </button>
+            ${!isOwnerAccount ? `
+            <button type="button" class="btn-delete-user px-2.5 py-1 rounded text-xs font-bold bg-rose-700 hover:bg-rose-800 text-white shadow-sm transition active:scale-95 cursor-pointer"
+              data-username="${escapeHtml(u.username)}" title="${currentLang === 'ar' ? 'حذف المستخدم' : 'Delete user'}">
+              ${currentLang === 'ar' ? 'حذف' : 'Delete'}
+            </button>
+            ` : ''}
+          </div>
+        </td>
+      </tr>
+    `}).join('');
+  }
+
   // Load Admin Users Credentials Table
   async function loadAdminUsersTable() {
     const tbody = document.getElementById('admin-users-table-body');
@@ -1386,95 +1496,30 @@
       return;
     }
 
-    tbody.innerHTML = `
-      <tr>
-        <td colspan="5" class="py-5 text-center text-xs text-slate-500 font-mono">
-          Loading credentials...
-        </td>
-      </tr>
-    `;
+    // Immediately render local cached users first so table is never blank or showing error
+    const cachedUsers = getLocalUsers();
+    if (cachedUsers && cachedUsers.length > 0) {
+      renderAdminUsersRows(cachedUsers, tbody);
+    } else {
+      tbody.innerHTML = `<tr><td colspan="5" class="py-5 text-center text-xs text-slate-500 font-mono">Loading credentials...</td></tr>`;
+    }
 
     try {
       const res = await fetch(`${API_BASE}/users`);
       if (!res.ok) throw new Error('Fetch users failed');
       const users = await res.json();
 
-      if (!Array.isArray(users) || users.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" class="py-4 text-center text-xs text-slate-500">No user accounts found</td></tr>`;
-        return;
+      if (Array.isArray(users) && users.length > 0) {
+        try {
+          localStorage.setItem('ug_production_users', JSON.stringify(users));
+        } catch (_) {}
+        refreshWorkerDropdowns(users);
+        renderAdminUsersRows(users, tbody);
       }
-
-      // Sync local cache
-      try {
-        localStorage.setItem('ug_production_users', JSON.stringify(users));
-      } catch (_) {}
-
-      // Refresh worker dropdowns across system
-      refreshWorkerDropdowns(users);
-
-      const isAr = currentLang === 'ar';
-
-      function renderRoleSelector(u) {
-        const currentTitle = u.roleTitle || (
-          u.role === 'admin' ? 'مدير النظام' :
-          u.role === 'supervisor' ? 'مشرف انتاج' :
-          'عامل'
-        );
-
-        const isEn = currentLang === 'en';
-        const options = [
-          { value: 'مدير النظام', role: 'admin', label: isEn ? 'System Administrator' : 'مدير النظام' },
-          { value: 'مدير تنفيذي', role: 'admin', label: isEn ? 'Executive Director' : 'مدير تنفيذي' },
-          { value: 'مدير انتاج', role: 'admin', label: isEn ? 'Production Manager' : 'مدير انتاج' },
-          { value: 'مشرف انتاج', role: 'supervisor', label: isEn ? 'Production Supervisor' : 'مشرف انتاج' },
-          { value: 'عامل', role: 'worker', label: isEn ? 'Worker' : 'عامل' }
-        ];
-
-        return `
-          <select class="user-edit-role-select text-xs font-bold rounded px-2.5 py-1 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 outline-none focus:ring-1 focus:ring-[#1e2540] cursor-pointer"
-            data-username="${escapeHtml(u.username)}">
-            ${options.map(opt => `
-              <option value="${opt.value}" data-role="${opt.role}" ${currentTitle === opt.value ? 'selected' : ''}>
-                ${opt.label}
-              </option>
-            `).join('')}
-          </select>
-        `;
-      }
-
-      tbody.innerHTML = users.map(u => {
-        const isOwnerAccount = isServerOwner(u);
-        return `
-        <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition">
-          <td class="py-2.5 px-3">${renderRoleSelector(u)}</td>
-          <td class="py-2.5 px-3 font-mono font-bold text-[#1e2540] dark:text-[#d4aa65]">${escapeHtml(u.username)}</td>
-          <td class="py-2.5 px-3">
-            <input type="text" class="user-edit-name w-full max-w-[180px] px-2.5 py-1 text-xs font-semibold rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 outline-none focus:ring-1 focus:ring-[#1e2540]"
-              data-username="${escapeHtml(u.username)}" value="${escapeHtml(u.name || getWorkerDisplayName(u.username, currentLang))}">
-          </td>
-          <td class="py-2.5 px-3">
-            <input type="text" class="user-edit-password w-full max-w-[180px] px-2.5 py-1 text-xs font-mono font-semibold rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 outline-none focus:ring-1 focus:ring-[#1e2540]"
-              data-username="${escapeHtml(u.username)}" value="${escapeHtml(u.password || '')}" placeholder="Password">
-          </td>
-          <td class="py-2.5 px-3 text-center">
-            <div class="inline-flex items-center gap-1.5 justify-center">
-              <button type="button" class="btn-save-user px-3 py-1 rounded text-xs font-bold bg-emerald-700 hover:bg-emerald-800 text-white shadow-sm transition active:scale-95 cursor-pointer"
-                data-username="${escapeHtml(u.username)}">
-                ${currentLang === 'ar' ? 'حفظ' : 'Save'}
-              </button>
-              ${!isOwnerAccount ? `
-              <button type="button" class="btn-delete-user px-2.5 py-1 rounded text-xs font-bold bg-rose-700 hover:bg-rose-800 text-white shadow-sm transition active:scale-95 cursor-pointer"
-                data-username="${escapeHtml(u.username)}" title="${currentLang === 'ar' ? 'حذف المستخدم' : 'Delete user'}">
-                ${currentLang === 'ar' ? 'حذف' : 'Delete'}
-              </button>
-              ` : ''}
-            </div>
-          </td>
-        </tr>
-      `}).join('');
     } catch (err) {
-      console.error('loadAdminUsersTable error:', err);
-      tbody.innerHTML = `<tr><td colspan="5" class="py-4 text-center text-xs text-rose-600 font-bold">Failed to load accounts</td></tr>`;
+      console.warn('Network error loading users, kept cached fallback:', err);
+      const fallback = getLocalUsers();
+      renderAdminUsersRows(fallback, tbody);
     }
   }
 
@@ -2194,6 +2239,20 @@
                       ${isAr ? 'مُسنَد من' : 'DISPATCHED BY'}: ${escapeHtml(task.assignedBy)}
                     </span>
                   ` : ''}
+                  ${task.deadline ? `
+                    <span>|</span>
+                    <span class="worker-inline-countdown px-2 py-0.5 rounded text-[10px] font-mono font-bold border transition-all ${
+                      isCompleted 
+                        ? 'bg-emerald-50 text-emerald-900 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-200' 
+                        : (new Date(task.deadline).getTime() <= Date.now())
+                          ? 'bg-rose-50 text-rose-900 border-rose-300 dark:bg-rose-950 dark:text-rose-200 animate-pulse'
+                          : 'bg-cyan-50 text-cyan-900 border-cyan-300 dark:bg-cyan-950 dark:text-cyan-200'
+                    }"
+                      data-deadline="${escapeHtml(task.deadline)}"
+                      data-status="${escapeHtml(task.status || 'pending')}">
+                      ${renderInlineCountdownBadge(task.deadline, task.status, currentLang)}
+                    </span>
+                  ` : ''}
                 </div>
               </div>
             </div>
@@ -2541,11 +2600,13 @@
           </td>
           <td class="py-2.5 px-3 text-center">
             ${badgeHtml}
+          </td>
+          <td class="py-2.5 px-3 text-center">
             ${r.deadline ? `
-              <div class="admin-countdown-pill mt-1" data-deadline="${escapeHtml(r.deadline)}" data-status="${escapeHtml(r.status || 'pending')}">
+              <div class="admin-countdown-pill inline-flex flex-col items-center justify-center gap-0.5" data-deadline="${escapeHtml(r.deadline)}" data-status="${escapeHtml(r.status || 'pending')}">
                 ${renderAdminCountdownPill(r.deadline, r.status, currentLang)}
               </div>
-            ` : ''}
+            ` : `<span class="text-slate-400 font-mono text-xs">-</span>`}
           </td>
           <td class="py-2 px-3 text-center">
             ${isKnead ? `
