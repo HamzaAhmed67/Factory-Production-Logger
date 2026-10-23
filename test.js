@@ -575,6 +575,40 @@ test('API Integration Tests (Stdlib)', async (t) => {
     // Clean up
     await request(server, `/api/logs/${created.id}`, { method: 'DELETE' });
   });
+
+  await t.test('Worker performance evaluation rating: 10/10 on time, -1 for every 30m late', async () => {
+    function computeRating(overdueSeconds) {
+      if (overdueSeconds <= 0) return 10;
+      const lateHalfHours = Math.ceil(overdueSeconds / 1800);
+      return Math.max(0, 10 - lateHalfHours);
+    }
+
+    // Finished on time or early
+    assert.equal(computeRating(0), 10);
+    assert.equal(computeRating(-600), 10);
+
+    // 15 mins late -> 9/10
+    assert.equal(computeRating(15 * 60), 9);
+
+    // Exactly 30 mins late -> 9/10
+    assert.equal(computeRating(30 * 60), 9);
+
+    // 31 mins late -> 8/10
+    assert.equal(computeRating(31 * 60), 8);
+
+    // 60 mins late -> 8/10
+    assert.equal(computeRating(60 * 60), 8);
+
+    // 61 mins late -> 7/10
+    assert.equal(computeRating(61 * 60), 7);
+
+    // 5 hours late (300 mins) -> 10 - 10 = 0
+    assert.equal(computeRating(300 * 60), 0);
+
+    // 10 hours late -> clamped at 0
+    assert.equal(computeRating(600 * 60), 0);
+  });
 });
+
 
 

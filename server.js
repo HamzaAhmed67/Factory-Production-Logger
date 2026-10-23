@@ -45,8 +45,10 @@ const DATA_FILE = path.join(DATA_DIR, 'production_data.json');
 
 const DEFAULT_USERS = [
   { username: 'Admin', password: '123', role: 'admin', name: 'حمزه', roleTitle: 'مدير النظام' },
+  { username: 'Ehab', password: '123', role: 'admin', name: 'إيهاب', roleTitle: 'رئيس مجلس الاداره' },
   { username: 'Salwa', password: '123', role: 'admin', name: 'سلوى', roleTitle: 'مدير تنفيذي' },
   { username: 'Hossam', password: '123', role: 'admin', name: 'حسام', roleTitle: 'مدير انتاج' },
+  { username: 'Fatma', password: '123', role: 'supervisor', name: 'فاطمة', roleTitle: 'مدير مالي' },
   { username: 'Ahmed Khaled', password: '123', role: 'supervisor', name: 'احمد خالد', roleTitle: 'مشرف انتاج' },
   { username: 'Mohamed Saeed', password: '123', role: 'worker', name: 'محمد سعيد', roleTitle: 'عامل' },
   { username: 'Ahmed Abd El Nasser', password: '123', role: 'worker', name: 'احمد عبد الناصر', roleTitle: 'عامل' },
@@ -619,7 +621,7 @@ app.post('/api/users', async (req, res) => {
     }
     if (!role) {
       role = (roleTitle === 'عامل' || roleTitle === 'Worker' || roleTitle === 'عمال') ? 'worker' :
-             (roleTitle === 'مشرف انتاج' || roleTitle === 'Production Supervisor') ? 'supervisor' : 'admin';
+             (roleTitle === 'مشرف انتاج' || roleTitle === 'Production Supervisor' || roleTitle === 'مدير مالي' || roleTitle === 'Financial Director') ? 'supervisor' : 'admin';
     }
     if (!password || !password.trim()) {
       password = '123';

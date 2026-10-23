@@ -35,8 +35,10 @@
   // Default fallback users for zero-downtime offline support
   const DEFAULT_USERS = [
     { username: 'Admin', password: '123', role: 'admin', name: 'حمزه', roleTitle: 'مدير النظام' },
+    { username: 'Ehab', password: '123', role: 'admin', name: 'إيهاب', roleTitle: 'رئيس مجلس الاداره' },
     { username: 'Salwa', password: '123', role: 'admin', name: 'سلوى', roleTitle: 'مدير تنفيذي' },
     { username: 'Hossam', password: '123', role: 'admin', name: 'حسام', roleTitle: 'مدير انتاج' },
+    { username: 'Fatma', password: '123', role: 'supervisor', name: 'فاطمة', roleTitle: 'مدير مالي' },
     { username: 'Ahmed Khaled', password: '123', role: 'supervisor', name: 'احمد خالد', roleTitle: 'مشرف انتاج' },
     { username: 'Mohamed Saeed', password: '123', role: 'worker', name: 'محمد سعيد', roleTitle: 'عامل' },
     { username: 'Ahmed Abd El Nasser', password: '123', role: 'worker', name: 'احمد عبد الناصر', roleTitle: 'عامل' },
@@ -205,6 +207,7 @@
       kpiHeading: 'Operator Performance Metrics',
       kpiSubheading: 'Completed tasks, average task duration, and operator throughput',
       kpiLblOverallAvg: 'Overall Avg Duration:',
+      kpiLblOverallScore: 'Overall Factory Score:',
       filterHeaderTitle: 'Filter & Search',
       btnClearFilters: 'Clear Filters',
       lblFWorker: 'Operator Filter',
@@ -222,6 +225,7 @@
       thQty: 'Quantity',
       thNotes: 'Notes',
       thStatus: 'Status',
+      thRating: 'Score / Rating',
       thTimer: 'Target & Delay',
       thStart: 'Started / Stages',
       thFinish: 'Finished & Duration',
@@ -400,6 +404,7 @@
       kpiHeading: 'مؤشرات أداء المشغلين',
       kpiSubheading: 'متابعة المهام المنجزة، متوسط زمن التنفيذ لكل مشغل، ومعدل الإنجاز',
       kpiLblOverallAvg: 'متوسط وقت الإنجاز العام:',
+      kpiLblOverallScore: 'متوسط درجات المصنع:',
       filterHeaderTitle: 'البحث والتصفية',
       btnClearFilters: 'مسح التصفية',
       lblFWorker: 'تصفية حسب المشغل',
@@ -417,6 +422,7 @@
       thQty: 'الكمية',
       thNotes: 'الملاحظات',
       thStatus: 'الحالة',
+      thRating: 'التقييم / الدرجة',
       thTimer: 'الالتزام وتجاوز الوقت',
       thStart: 'وقت البدء / المراحل',
       thFinish: 'الانتهاء والمدة',
@@ -843,6 +849,7 @@
     setText('kpi-heading', t.kpiHeading);
     setText('kpi-subheading', t.kpiSubheading);
     setText('kpi-lbl-overall-avg', t.kpiLblOverallAvg);
+    setText('kpi-lbl-overall-score', t.kpiLblOverallScore);
     setText('filter-header-title', t.filterHeaderTitle);
     setText('admin-clear-filters', t.btnClearFilters);
     setText('lbl-f-worker', t.lblFWorker);
@@ -879,6 +886,7 @@
     setText('th-a-qty', t.thQty);
     setText('th-a-notes', t.thNotes);
     setText('th-a-status', t.thStatus);
+    setText('th-a-rating', t.thRating);
     setText('th-a-timer', t.thTimer);
     setText('th-a-start', t.thStart);
     setText('th-a-finish', t.thFinish);
@@ -1103,6 +1111,64 @@
     }
 
     return Date.now() > deadlineMs;
+  }
+
+  // Task Performance Rating:
+  // - Completed on/before target time or deadline: 10 / 10
+  // - Completed late: minus 1 point for every 30 minutes (or fraction thereof) late
+  // - Pending/in-progress tasks: null (not finalized yet)
+  function computeTaskRating(record) {
+    if (!record || record.status !== 'completed') return null;
+
+    if (record.deadline) {
+      const overdueSec = getOverdueSeconds(record.deadline, record.completedAt, record.date, record.finishedAt);
+      if (overdueSec <= 0) {
+        return 10;
+      }
+      const lateHalfHours = Math.ceil(overdueSec / 1800);
+      return Math.max(0, 10 - lateHalfHours);
+    }
+
+    if (record.targetDurationMinutes && (record.startedAt || record.kneadingAt || record.time) && record.finishedAt) {
+      const durSec = computeDurationSeconds(record.startedAt || record.kneadingAt || record.time, record.finishedAt);
+      if (durSec !== null) {
+        const targetSec = record.targetDurationMinutes * 60;
+        const overdueSec = durSec - targetSec;
+        if (overdueSec <= 0) return 10;
+        const lateHalfHours = Math.ceil(overdueSec / 1800);
+        return Math.max(0, 10 - lateHalfHours);
+      }
+    }
+
+    return 10;
+  }
+
+  function renderRatingBadge(score, lang = currentLang) {
+    if (score === null || score === undefined || isNaN(score)) {
+      return `<span class="text-slate-400 font-mono text-xs font-medium">-</span>`;
+    }
+    const isAr = lang === 'ar';
+    const scoreDisplay = isAr ? localizeDigits(score, 'ar') : score;
+    const maxDisplay = isAr ? '١٠' : '10';
+
+    let colorClass = 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700';
+    let icon = '⭐';
+    if (score < 5) {
+      colorClass = 'bg-rose-50 text-rose-800 dark:bg-rose-950/80 dark:text-rose-300 border-rose-300 dark:border-rose-700';
+      icon = '⚠️';
+    } else if (score < 9) {
+      colorClass = 'bg-amber-50 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300 border-amber-300 dark:border-amber-700';
+      icon = '⭐';
+    }
+
+    return `
+      <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold font-mono border ${colorClass} shadow-2xs whitespace-nowrap">
+        <span>${icon}</span>
+        <span>${scoreDisplay}</span>
+        <span class="text-[10px] opacity-75 font-normal">/</span>
+        <span class="text-[10px] opacity-75 font-normal">${maxDisplay}</span>
+      </span>
+    `;
   }
 
   function renderCountdownContent(deadline, status, finishedAt, targetMinutes, lang = currentLang, isOverdue = false, completedAt = null, startedAt = null) {
@@ -1472,10 +1538,15 @@
       'System Administrator': 'System Administrator',
       'اونر السيرفر': 'System Administrator',
       'Server Owner': 'System Administrator',
+      'رئيس مجلس الاداره': 'Chairman of the Board',
+      'رئيس مجلس الإدارة': 'Chairman of the Board',
+      'Chairman of the Board': 'Chairman of the Board',
       'مدير تنفيذي': 'Executive Director',
       'Executive Director': 'Executive Director',
       'مدير انتاج': 'Production Manager',
       'Production Manager': 'Production Manager',
+      'مدير مالي': 'Financial Director',
+      'Financial Director': 'Financial Director',
       'مشرف انتاج': 'Production Supervisor',
       'Production Supervisor': 'Production Supervisor',
       'عامل': 'Worker',
@@ -1488,10 +1559,15 @@
       'System Administrator': 'مدير النظام',
       'اونر السيرفر': 'مدير النظام',
       'Server Owner': 'مدير النظام',
+      'رئيس مجلس الاداره': 'رئيس مجلس الاداره',
+      'رئيس مجلس الإدارة': 'رئيس مجلس الاداره',
+      'Chairman of the Board': 'رئيس مجلس الاداره',
       'مدير تنفيذي': 'مدير تنفيذي',
       'Executive Director': 'مدير تنفيذي',
       'مدير انتاج': 'مدير انتاج',
       'Production Manager': 'مدير انتاج',
+      'مدير مالي': 'مدير مالي',
+      'Financial Director': 'مدير مالي',
       'مشرف انتاج': 'مشرف انتاج',
       'Production Supervisor': 'مشرف انتاج',
       'عامل': 'عامل',
@@ -1694,9 +1770,11 @@
       );
 
       const options = [
+        { value: 'رئيس مجلس الاداره', role: 'admin', label: isEn ? 'Chairman of the Board' : 'رئيس مجلس الاداره' },
         { value: 'مدير النظام', role: 'admin', label: isEn ? 'System Administrator' : 'مدير النظام' },
         { value: 'مدير تنفيذي', role: 'admin', label: isEn ? 'Executive Director' : 'مدير تنفيذي' },
         { value: 'مدير انتاج', role: 'admin', label: isEn ? 'Production Manager' : 'مدير انتاج' },
+        { value: 'مدير مالي', role: 'supervisor', label: isEn ? 'Financial Director' : 'مدير مالي' },
         { value: 'مشرف انتاج', role: 'supervisor', label: isEn ? 'Production Supervisor' : 'مشرف انتاج' },
         { value: 'عامل', role: 'worker', label: isEn ? 'Worker' : 'عامل' }
       ];
@@ -2590,9 +2668,12 @@
                     <span>${isAr ? 'الانتهاء' : 'FINISH'}: <strong class="text-emerald-700 dark:text-emerald-400">${escapeHtml(displayFinished || '-')}</strong></span>
                   </div>
                 `}
-                <span class="text-[10px] font-mono font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
-                  ${t.taskCompletedLocked}
-                </span>
+                <div class="flex items-center space-x-2 rtl:space-x-reverse flex-wrap gap-1">
+                  <span class="text-[10px] font-mono font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+                    ${t.taskCompletedLocked}
+                  </span>
+                  ${renderRatingBadge(computeTaskRating(task), currentLang)}
+                </div>
               </div>
             ` : ''}
           </div>
@@ -2639,6 +2720,7 @@
       ? allWorkerAccounts.map(u => u.username)
       : ['Mohamed Saeed', 'Ahmed Abd El Nasser', 'Mohamed Hamdy', 'Youseef Khaled', 'Ahmed'];
     const factoryDurations = [];
+    const factoryRatings = [];
 
     const cardsHtml = defaultWorkers.map(wId => {
       const workerRecords = records.filter(r => {
@@ -2668,6 +2750,21 @@
 
       const completionRate = total > 0 ? Math.round((completed.length / total) * 100) : 0;
 
+      // Calculate Ratings for this Worker
+      const ratings = completed
+        .map(r => computeTaskRating(r))
+        .filter(s => s !== null);
+
+      ratings.forEach(s => factoryRatings.push(s));
+
+      const avgRating = ratings.length > 0
+        ? ratings.reduce((a, b) => a + b, 0) / ratings.length
+        : null;
+
+      const avgRatingFormatted = avgRating !== null
+        ? (avgRating % 1 === 0 ? avgRating.toString() : avgRating.toFixed(1))
+        : null;
+
       const totalWeight = workerRecords.reduce((sum, r) => {
         const val = parseFloat(r.weight || r.quantity);
         return sum + (isNaN(val) ? 0 : val);
@@ -2678,17 +2775,29 @@
 
       return `
         <div class="glass-card rounded-xl p-4 border border-slate-300 dark:border-slate-700 shadow-md space-y-3 bg-white/95 dark:bg-slate-900/90">
-          <div class="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-800">
+          <div class="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-800 flex-wrap gap-2">
             <div class="font-bold text-sm text-[#1e2540] dark:text-[#d4aa65]">
               <span class="text-xs text-slate-700 dark:text-slate-300 font-semibold">${isAr ? 'المشغل:' : 'OPERATOR:'}</span> ${escapeHtml(displayName)}
             </div>
-            <span class="text-xs font-bold px-2 py-0.5 rounded shadow-sm ${
-              completionRate >= 80 ? 'bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700' :
-              completionRate >= 50 ? 'bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 dark:border-amber-700' :
-              'bg-slate-200 text-slate-900 dark:bg-slate-800 dark:text-slate-100 border border-slate-300 dark:border-slate-600'
-            }">
-              ${isAr ? `${localizeDigits(completionRate, 'ar')}٪ إنجاز` : `${completionRate}% COMPLETED`}
-            </span>
+            <div class="flex items-center gap-1.5 flex-wrap">
+              <span class="inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded shadow-sm border ${
+                avgRating === null ? 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border-slate-300 dark:border-slate-700' :
+                avgRating >= 8.5 ? 'bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200 border-amber-300 dark:border-amber-700' :
+                avgRating >= 6 ? 'bg-amber-50 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border-amber-200 dark:border-amber-800' :
+                'bg-rose-100 text-rose-900 dark:bg-rose-950 dark:text-rose-200 border-rose-300 dark:border-rose-700'
+              }">
+                <span>⭐</span>
+                <span>${isAr ? 'الدرجة:' : 'Score:'}</span>
+                <span class="font-mono font-black">${avgRating !== null ? (isAr ? `${localizeDigits(avgRatingFormatted, 'ar')} / ١٠` : `${avgRatingFormatted}/10`) : '--'}</span>
+              </span>
+              <span class="text-xs font-bold px-2 py-0.5 rounded shadow-sm ${
+                completionRate >= 80 ? 'bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700' :
+                completionRate >= 50 ? 'bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 dark:border-amber-700' :
+                'bg-slate-200 text-slate-900 dark:bg-slate-800 dark:text-slate-100 border border-slate-300 dark:border-slate-600'
+              }">
+                ${isAr ? `${localizeDigits(completionRate, 'ar')}٪ إنجاز` : `${completionRate}% COMPLETED`}
+              </span>
+            </div>
           </div>
 
           <div class="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-2 overflow-hidden">
@@ -2724,6 +2833,21 @@
               </span>
             </div>
           </div>
+
+          <!-- Performance & Timeliness Rating Box -->
+          <div class="p-2.5 rounded-lg bg-gradient-to-r from-amber-50/70 to-yellow-50/50 dark:from-amber-950/40 dark:to-yellow-950/30 border border-amber-300/80 dark:border-amber-800/60 shadow-sm flex items-center justify-between">
+            <div class="flex items-center space-x-2 rtl:space-x-reverse">
+              <span class="text-base">⭐</span>
+              <div>
+                <span class="text-[11px] font-bold text-slate-800 dark:text-slate-200 block">${isAr ? 'تقييم كفاءة المشغل والالتزام' : 'EFFICIENCY & TIMELINESS RATING'}</span>
+                <span class="text-[10px] text-slate-500 dark:text-slate-400">${isAr ? (ratings.length > 0 ? `محسوب من ${localizeDigits(ratings.length, 'ar')} مهمة منجزة (${ratings.length} تقييم)` : 'بانتظار إنجاز أوامر العمل') : (ratings.length > 0 ? `Based on ${ratings.length} completed task(s)` : 'Awaiting completed tasks')}</span>
+              </div>
+            </div>
+            <div class="text-right rtl:text-left font-mono">
+              <span class="text-base font-black text-amber-800 dark:text-amber-300">${avgRating !== null ? (isAr ? localizeDigits(avgRatingFormatted, 'ar') : avgRatingFormatted) : '--'}</span>
+              <span class="text-xs text-slate-500 dark:text-slate-400 font-bold">/ ${isAr ? '١٠' : '10'}</span>
+            </div>
+          </div>
         </div>
       `;
     }).join('');
@@ -2736,6 +2860,17 @@
         overallAvgEl.textContent = formatDuration(overallSec);
       } else {
         overallAvgEl.textContent = '--';
+      }
+    }
+
+    const overallScoreEl = document.getElementById('kpi-overall-score');
+    if (overallScoreEl) {
+      if (factoryRatings.length > 0) {
+        const avgScore = factoryRatings.reduce((a, b) => a + b, 0) / factoryRatings.length;
+        const avgScoreFormatted = avgScore % 1 === 0 ? avgScore.toString() : avgScore.toFixed(1);
+        overallScoreEl.textContent = currentLang === 'ar' ? `⭐ ${localizeDigits(avgScoreFormatted, 'ar')} / ١٠` : `⭐ ${avgScoreFormatted}/10`;
+      } else {
+        overallScoreEl.textContent = '--';
       }
     }
   }
@@ -2767,7 +2902,7 @@
     if (filtered.length === 0) {
       tbody.innerHTML = `
         <tr>
-          <td colspan="11" class="py-6 text-center text-slate-400 font-mono text-xs">
+          <td colspan="12" class="py-6 text-center text-slate-400 font-mono text-xs">
             ${records.length === 0 ? t.adminEmpty : t.adminFilterEmpty}
           </td>
         </tr>
@@ -2831,6 +2966,9 @@
           </td>
           <td class="py-2.5 px-3 text-center">
             ${badgeHtml}
+          </td>
+          <td class="py-2.5 px-3 text-center font-mono">
+            ${renderRatingBadge(computeTaskRating(r), currentLang)}
           </td>
           <td class="py-2.5 px-3 text-center">
             ${r.deadline ? `
@@ -3037,6 +3175,7 @@
             <th class="th-main">${isRtl ? 'الكمية' : 'Quantity'}</th>
             <th class="th-main">${isRtl ? 'الملاحظات' : 'Notes'}</th>
             <th class="th-main">${isRtl ? 'الحالة' : 'Status'}</th>
+            <th class="th-main">${isRtl ? 'الدرجة / التقييم' : 'Score / Rating'}</th>
             <th class="th-main">${isRtl ? 'بدء التنفيذ / المراحل' : 'Started / Stages'}</th>
             <th class="th-main">${isRtl ? 'الانتهاء' : 'Finished'}</th>
             <th class="th-main">${isRtl ? 'الوقت المستغرق' : 'Duration'}</th>
@@ -3074,6 +3213,10 @@
               <td class="cell cell-qty">${escapeHtml(formatDisplayQuantity(r.quantity, r.unit, currentLang))}</td>
               <td class="cell">${escapeHtml(r.notes || '-')}</td>
               <td class="cell cell-center">${stageNames[r.status] || stageNames.pending}</td>
+              <td class="cell cell-center" style="font-weight: bold; color: #d97706;">${(() => {
+                const s = computeTaskRating(r);
+                return s !== null ? (isRtl ? `${localizeDigits(s, 'ar')} / ١٠` : `${s}/10`) : '-';
+              })()}</td>
               <td class="cell cell-center">${isKneadingTask(r.task) ? ([
                 (r.kneadingAt || r.startedAt) ? `${isRtl ? 'عجن' : 'Knead'}: ${formatDisplayTime(r.kneadingAt || r.startedAt, currentLang)}` : null,
                 r.ovenAt ? `${isRtl ? 'فرن' : 'Oven'}: ${formatDisplayTime(r.ovenAt, currentLang)}` : null,
@@ -3107,7 +3250,7 @@
       return;
     }
 
-    const headers = ['#', 'Date', 'Time', 'Operator', 'Operation', 'Batch_Product', 'Quantity', 'Notes', 'Status', 'StartedAt', 'FinishedAt', 'Duration', 'OverdueDelay'];
+    const headers = ['#', 'Date', 'Time', 'Operator', 'Operation', 'Batch_Product', 'Quantity', 'Notes', 'Status', 'Score_Rating', 'StartedAt', 'FinishedAt', 'Duration', 'OverdueDelay'];
     const rows = filtered.map((r, i) => {
       const durSec = (r.startedAt || r.kneadingAt || r.time) && r.finishedAt 
         ? computeDurationSeconds(r.startedAt || r.kneadingAt || r.time, r.finishedAt) 
@@ -3136,6 +3279,10 @@
         `"${(r.quantity || '').replace(/"/g, '""')}"`,
         `"${(r.notes || '').replace(/"/g, '""')}"`,
         r.status || 'pending',
+        (() => {
+          const s = computeTaskRating(r);
+          return s !== null ? `${s}/10` : '';
+        })(),
         r.startedAt || '',
         r.finishedAt || '',
         `"${durText.replace(/"/g, '""')}"`,
@@ -3226,6 +3373,7 @@
               <th class="center">${t.thQty}</th>
               <th>${t.thNotes}</th>
               <th class="center">${t.thStatus}</th>
+              <th class="center">${t.thRating}</th>
               <th class="center">${t.thStart}</th>
               <th class="center">${t.thFinish}</th>
               <th class="center">${isRtl ? 'المدة' : 'Duration'}</th>
@@ -3264,6 +3412,10 @@
                 <td class="qty font-mono">${escapeHtml(formatDisplayQuantity(r.quantity, r.unit, currentLang))}</td>
                 <td class="font-mono">${escapeHtml(r.notes || '-')}</td>
                 <td class="center font-mono"><strong>${stageNames[r.status] || stageNames.pending}</strong></td>
+                <td class="center font-mono font-bold" style="color: #b45309;">${(() => {
+                  const s = computeTaskRating(r);
+                  return s !== null ? (isRtl ? `${localizeDigits(s, 'ar')} / ١٠` : `${s}/10`) : '-';
+                })()}</td>
                 <td class="center font-mono">${escapeHtml(formatDisplayTime(r.startedAt, currentLang))}</td>
                 <td class="center font-mono font-bold">${escapeHtml(formatDisplayTime(r.finishedAt, currentLang))}</td>
                 <td class="center font-mono">${durText}</td>
