@@ -66,10 +66,12 @@ function readLocalData() {
   ensureDataFile();
   try {
     const data = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
-    if (!data.users || data.users.length === 0) {
-      data.users = JSON.parse(JSON.stringify(DEFAULT_USERS));
-      writeLocalData(data);
-    }
+    data.users = data.users || [];
+    DEFAULT_USERS.forEach(defU => {
+      if (!data.users.some(u => u.username.toLowerCase() === defU.username.toLowerCase())) {
+        data.users.push({ ...defU });
+      }
+    });
     return data;
   } catch {
     return { logs: [], admin: null, users: JSON.parse(JSON.stringify(DEFAULT_USERS)) };

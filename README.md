@@ -98,10 +98,20 @@
    انسخ ملف `.env.example` إلى `.env`:
    ```env
    PORT=3000
-   MONGODB_URI=mongodb://localhost:27017/factory_production
+   MONGODB_URI=mongodb+srv://<user>:<password>@cluster.mongodb.net/factory_production?retryWrites=true&w=majority
    ```
 
-3. **تشغيل الخادم**:
+3. **النشر على Render (Deploy to Render)**:
+   - أنشئ **Web Service** جديد على [render.com](https://render.com) مربوط بمستودع GitHub.
+   - **Runtime**: `Node`
+   - **Build Command**: `npm install`
+   - **Start Command**: `npm start`
+   - **Environment Variables**:
+     * `MONGODB_URI`: رابط اتصال MongoDB Atlas
+     * `NODE_ENV`: `production`
+   - أو استخدم الزر Blueprint عبر ملف `render.yaml` المرفق تلقائياً.
+
+4. **تشغيل الخادم محلياً**:
    - وضع الإنتاج (Production):
      ```bash
      npm start
@@ -111,12 +121,12 @@
      npm run dev
      ```
 
-4. **تشغيل الاختبارات الآلية (Automated Tests)**:
+5. **تشغيل الاختبارات الآلية (Automated Tests)**:
    ```bash
    npm test
    ```
 
-5. افتح المتصفح على:
+6. افتح المتصفح على:
    ```
    http://localhost:3000
    ```
